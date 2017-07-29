@@ -9,13 +9,41 @@ body {
     font-family: Arial,Arial,Helvetica,sans-serif;
     line-height: 1.5;
 }
+
+
+input[id^="spoiler"]{
+ display: none;
+}
+input[id^="spoiler"] + label {
+  display: block;
+}
+input[id^="spoiler"]:checked + label {
+  color: #333;
+  background: #ccc;
+}
+input[id^="spoiler"] ~ .spoiler {
+  width: 90%;
+  height: 0px;
+  overflow: hidden;
+  opacity: 0;
+  background: #eee;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin:auto;
+  transition: height 1s;
+}
+input[id^="spoiler"]:checked + label + .spoiler{
+  transition-timing-function: linear;
+  height: 80px;
+  opacity: 1;
+}
+
+
+
+
 .btn {
   background: #FDFDFD;
-  background-image: -webkit-linear-gradient(top, #37ADD4, #1B657E);
-  background-image: -moz-linear-gradient(top, #37ADD4, #1B657E);
   background-image: linear-gradient(to bottom, #37ADD4, #1B657E);
-  -webkit-border-radius: 28;
-  -moz-border-radius: 28;
   border-radius: 28px;
   text-shadow: 1px 1px 3px #666666;
   font-family: Arial;
@@ -26,6 +54,7 @@ body {
   text-decoration: none;
 }
 
+
 .btn:hover {
   background: #37ADD4;
   text-decoration: none;
@@ -34,7 +63,7 @@ body {
   width:40px;
   height:40px;
   margin-bottom: -12px;
-  padding -8px;
+  padding: -8px;
 }
 .octocat{
 	width:55px;
@@ -68,7 +97,7 @@ box-shadow: 0px 0px 5px #B1B1B1;
     height: 0px;
     display: block;
     position: absolute;
-    bottom: -15px;
+    bottom: -14px;
     left: 0px;
     transform: rotate(45deg);
 }
@@ -98,7 +127,8 @@ text-align:center;
 }
 
 .mainbody{
-background: transparent radial-gradient(100% 30% at center top , #555, #444, #333, #222, #191919) no-repeat scroll center top / 100% auto;
+background: #F0F0F0 url("https://github.com/EternalBlueFlame/Trains-In-Motion/blob/gh-pages/assets/bright-squares.png?raw=true") repeat scroll 0% 0%;
+margin-top:-20px;
 }
   
 </style></head><body>
@@ -107,14 +137,38 @@ background: transparent radial-gradient(100% 30% at center top , #555, #444, #33
           <h3>A train mod for minecraft, inspired by Traincraft and Densha De Go</h3>
   
   <div class="download-bar">
-	  <a class="btn" href="https://github.com/EternalBlueFlame/Trains-In-Motion"><img class="octocat" src ="https://pages-themes.github.io/tactile/assets/images/octocat-icon.png" />View on GitHub</a>
-	  
-	  <a class="btn" href="https://github.com/EternalBlueFlame/Trains-In-Motion/releases/download/0.2.6.0-Alpha/Trains.in.Motion.0.2.6.Alpha.jar"><img src="https://github.com/shlinux/faenza-icon-theme/blob/master/Faenza/mimetypes/64/application-x-jar.png?raw=true" /> Download latest jar file</a>
-
-	  <p/><a class="btn" href="https://github.com/EternalBlueFlame/Trains-In-Motion/zipball/master"><img src="https://github.com/shlinux/faenza-icon-theme/blob/master/Faenza/mimetypes/64/application-x-zip.png?raw=true" /> Download latest source zip</a>
-
-	  <a class="btn" href="https://github.com/EternalBlueFlame/Trains-In-Motion/tarball/master"><img src="https://github.com/shlinux/faenza-icon-theme/blob/master/Faenza/mimetypes/64/application-x-tar.png?raw=true" /> Download latest source tar</a>
-	  
+  <table>
+	<tr><td>
+		<input type="checkbox"  id="spoiler1"/> 
+		<label for="spoiler1" class="btn"><img class="octocat" src ="https://pages-themes.github.io/tactile/assets/images/octocat-icon.png" />View on GitHub</label>
+		<div class="spoiler">
+		  <br/><a class="btn" href="https://github.com/EternalBlueFlame/Trains-In-Motion"> 1.7.10 </a>
+		</div>
+	</td><td>
+		<input type="checkbox"  id="spoiler2"/> 
+		<label for="spoiler2" class="btn">
+			<img src="https://github.com/shlinux/faenza-icon-theme/blob/master/Faenza/mimetypes/64/application-x-jar.png?raw=true" /> Download jar file
+		</label>
+		<div class="spoiler">
+		  <br/><a class="btn" href="https://github.com/EternalBlueFlame/Trains-In-Motion/releases/download/0.2.6.0-Alpha/Trains.in.Motion.0.2.6.Alpha.jar">1.7.10</a>
+		</div>
+	</td></tr><tr><td>
+		<input type="checkbox"  id="spoiler3"/> 
+		<label for="spoiler3" class="btn">
+			<img src="https://github.com/shlinux/faenza-icon-theme/blob/master/Faenza/mimetypes/64/application-x-zip.png?raw=true" /> Download Source zip
+		</label>
+		<div class="spoiler">
+		  <br/><a class="btn" href="https://github.com/EternalBlueFlame/Trains-In-Motion/zipball/master">1.7.10</a>
+		</div>
+	  </td><td>
+		<input type="checkbox"  id="spoiler4"/> 
+		<label for="spoiler4" class="btn">
+			<img src="https://github.com/shlinux/faenza-icon-theme/blob/master/Faenza/mimetypes/64/application-x-tar.png?raw=true" /> Download Source tar
+		</label>
+		<div class="spoiler">
+		  <br/><a class="btn" href="https://github.com/EternalBlueFlame/Trains-In-Motion/tarball/master">1.7.10</a>
+		</div>
+	  </td></tr></table>
 <span class="blc"></span><span class="trc"></span>
   </div>
   
