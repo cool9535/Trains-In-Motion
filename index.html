@@ -9,11 +9,15 @@ body {
     font-family: Arial,Arial,Helvetica,sans-serif;
     line-height: 1.5;
 }
-
-
 input[id^="spoiler"]{
  display: none;
+ text-decoration: none;
 }
+input[id^="spoiler"]:hover{
+ display: none;
+ text-decoration: none;
+}
+
 input[id^="spoiler"] + label {
   display: block;
 }
@@ -41,12 +45,8 @@ input[id^="spoiler5"]:checked + label + .spoiler{
   height: 500px;
 }
 input[id^="spoiler6"]:checked + label + .spoiler{
-  height: 500px;
+  height:500px;
 }
-
-
-
-
 .btn {
   background: #FDFDFD;
   background-image: linear-gradient(to bottom, #37ADD4, #1B657E);
@@ -59,8 +59,6 @@ input[id^="spoiler6"]:checked + label + .spoiler{
   border: solid #000000 1px;
   text-decoration: none;
 }
-
-
 .btn:hover {
   background: #37ADD4;
   text-decoration: none;
@@ -74,7 +72,6 @@ input[id^="spoiler6"]:checked + label + .spoiler{
 .octocat{
 	width:55px;
 }
-
 .container{
 width:680px;
 margin: 0px auto;
@@ -89,7 +86,6 @@ box-shadow: 0px 0px 5px #B1B1B1;
     margin: 0px -15px 20px;
     position: relative;
 }
-
 .download-bar .blc {
     border-width: 10px;
     border-style: solid;
@@ -103,7 +99,6 @@ box-shadow: 0px 0px 5px #B1B1B1;
     left: 0px;
     transform: rotate(45deg);
 }
-
 .download-bar .trc {
     border-width: 10px;
     border-style: solid;
@@ -123,12 +118,10 @@ text-align:center;
 h3{
 text-align:center;
 }
-
 .mainbody{
 background: #F0F0F0 url("https://github.com/EternalBlueFlame/Trains-In-Motion/blob/gh-pages/assets/bright-squares.png?raw=true") repeat scroll 0% 0%;
 margin-top:-20px;
 }
-
 .banner{
 width:450px;
 margin: auto;
@@ -139,6 +132,48 @@ height:150px;
 width:auto;
 margin: 0 auto;
 }
+.status{
+    text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000;
+	text-decoration:bold;
+}
+.stable:after {
+color:#00FF00;
+content: "stable";
+}
+.unstable:after {
+color:#FF0000;
+content: "unstable";
+}
+.build:after {
+color:#00FF00;
+content: "stable";
+}
+.nobuild:after {
+color:#FF0000;
+content: "unstable";
+}
+li .banner {
+margin:0;
+width:auto;
+height:30px;
+-webkit-transition: 0.5s ease;
+transition: 0.5s ease;
+}
+li .banner:hover {
+height:30px;
+margin:0;
+width:auto;
+background:#eee;
+border-bottom: 2px solid black;
+-webkit-transition: 0.5s ease;
+transition: 0.5s ease;
+} 
+
+
   
 </style></head><body>
 <div class="container">
@@ -185,37 +220,53 @@ margin: 0 auto;
   
   
   
-  <h2>Join the Discussion:</h2>
+	<h1>Join the Discussion</h1>
   		<input type="checkbox"  id="spoiler5"/> 
 		<label for="spoiler5" class="banner">
 			<img src="https://github.com/EternalBlueFlame/Trains-In-Motion/blob/gh-pages/assets/Discord.png?raw=true" class="banner" />
 		</label>
 		<div class="spoiler">
-		  <iframe src="https://discordapp.com/widget?id=190640858805174273&theme=dark" width="612" height="500" allowtransparency="true" frameborder="0"></iframe>
-		</div>
-		<input type="checkbox"  id="spoiler6"/> 
-		<label for="spoiler6" class="banner">
-			<img src="https://github.com/EternalBlueFlame/Trains-In-Motion/blob/gh-pages/assets/trello.png?raw=true" class="banner"/>
-		</label>
-		<div class="spoiler">
-		  <iframe src="https://trello.com/b/cqaw1T3R/" width="612" height="500" allowtransparency="false" frameborder="0"></iframe>
+		  <iframe src="https://discordapp.com/widget?id=190640858805174273&theme=dark" width="612" height="500" allowtransparency="false" frameborder="0"></iframe>
 		</div>
   
   
+  <h1>Status</h1>
+  Current source: <span class="build status" ></span><br/>
+  Current Release: <span class="unstable status" ></span><br/>
+  Release version:<b> 0.2.6-Alpha</b><br/>
+  Check out our goals on trello: <a href="https://trello.com/b/cqaw1T3R/trains-in-motion">https://trello.com/b/cqaw1T3R/trains-in-motion</a>
   
-<table>
-<tr>
-<td>
-<h2> Current Status:</h2>
-<ul>
-<li> Builds - <b id="Build">stable-ish</b></li>
-<li> Revision - <b id="Revision"><a href="https://github.com/EternalBlueFlame/Trains-In-Motion/releases/">Alpha 0.2.5, Grab it here</a></b></li>
-</ul>
-</td>
-</tr>
-</table>
+  
+  
+ 
 
 <h1>Contributing</h1>
+
+<br/><br/>
+<ul><li>
+	<input type="checkbox"  id="spoiler6"/> 
+	<label for="spoiler6" class="banner">
+		<h2 class="hoverline">Models</h2>
+	</label>
+	<div class="spoiler">
+	  <ul>
+		<li> Models must match the Mod's Art-style.</li>
+		<li> "units" may be whatever measurement form you please, models can be scaled up/down to match.</li>
+		<li> Wheel base must be 12 units (the rail width).</li>
+		<li> Chassis must be at least 20 units (so it can fit the player).</li>
+		<li> Must be a .java model. Supported editors are:
+		<ul>
+			<li> <a href="http://www.minecraft-smp.de/index.php/downloads/category/19-latest-release">SMP Toolbox 2 (preferred)</a>. NOTE: Shapes aren't supported, instead use a Shapebox part type on boxes.</li>
+			<li> <a href="http://www.minecraftforum.net/forums/mapping-and-modding/minecraft-tools/1261320-modeler-fmcmodeler-v0-26-minecraft-models-in-a">FMC Modeler</a></li>
+			<li> Techne (No link is available currently)</li>
+			<li> MCModeler (No link is available currently, also untested)</li>
+		</ul>
+		<li>Parts intended to animate such as wheels and pistons must be centered (for example dimension of 1 would be an offset of -0.5)</li>
+		<li>If the model is not from SMP Toolbox, it must be at least texturemapped, however it is preferred that they be fully textured (see textures)</li>
+	  </ul>
+	</div>
+	</li></ul>
+<br/><br/>
 
 <table>
 <tr>
