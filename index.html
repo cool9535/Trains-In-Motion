@@ -45,7 +45,16 @@ input[id^="spoiler5"]:checked + label + .spoiler{
   height: 500px;
 }
 input[id^="spoiler6"]:checked + label + .spoiler{
-  height:500px;
+  height:405px;
+}
+input[id^="spoiler7"]:checked + label + .spoiler{
+  height:270px;
+}
+input[id^="spoiler8"]:checked + label + .spoiler{
+  height:340px;
+}
+input[id^="spoiler9"]:checked + label + .spoiler{
+  height:480px;
 }
 .btn {
   background: #FDFDFD;
@@ -241,8 +250,6 @@ transition: 0.5s ease;
  
 
 <h1>Contributing</h1>
-
-<br/><br/>
 <ul><li>
 	<input type="checkbox"  id="spoiler6"/> 
 	<label for="spoiler6" class="banner">
@@ -254,85 +261,79 @@ transition: 0.5s ease;
 		<li> "units" may be whatever measurement form you please, models can be scaled up/down to match.</li>
 		<li> Wheel base must be 12 units (the rail width).</li>
 		<li> Chassis must be at least 20 units (so it can fit the player).</li>
-		<li> Must be a .java model. Supported editors are:
+		<li> Length and height must be to scale with the chassis width.</li>
+		<li> Must be a .java model. Supported editors are:</li>
 		<ul>
 			<li> <a href="http://www.minecraft-smp.de/index.php/downloads/category/19-latest-release">SMP Toolbox 2 (preferred)</a>. NOTE: Shapes aren't supported, instead use a Shapebox part type on boxes.</li>
 			<li> <a href="http://www.minecraftforum.net/forums/mapping-and-modding/minecraft-tools/1261320-modeler-fmcmodeler-v0-26-minecraft-models-in-a">FMC Modeler</a></li>
 			<li> Techne (No link is available currently)</li>
 			<li> MCModeler (No link is available currently, also untested)</li>
 		</ul>
-		<li>Parts intended to animate such as wheels and pistons must be centered (for example dimension of 1 would be an offset of -0.5)</li>
-		<li>If the model is not from SMP Toolbox, it must be at least texturemapped, however it is preferred that they be fully textured (see textures)</li>
+		<li> Parts intended to animate such as wheels and pistons must be centered (for example dimension of 1 would be an offset of -0.5)</li>
+		<li> If the model is not from SMP Toolbox, it must be at least texturemapped, however it is preferred that they be fully textured (see textures)</li>
+		<li> Models must not infringe any forms of copyright (that means no chuggington, Thomas the tank engine, polar express, etc) </li>
+		<li> I will not accept .obj models, yes the render supports them but due to performance issues, I won't use them </li>
 	  </ul>
 	</div>
-	</li></ul>
-<br/><br/>
-
-<table>
-<tr>
-<td>
-<h2>Art:</h2>
-<ul>
-<li> Models must match the Mod's Art-style.</li>
-<li> Format is limited to <b>.java</b> models only; you can use tools such as BDCraft Cubik, SMP Toolbox, Technie or even writing it manually.</li>
-<li> SMP Toolbox models must not use Shape, we have dropped support of the function for various reasons, instead use ShapeBoxes.</li>
-<li> Model scale is <b>0.75 meters, or, 12 microblocks, wide for the wheel base</b>, In other words they must fit on minecart rails. It is reccomended the body should be 1.25+ meters, or, 20+ microblocks, wide.</li>
-<li> Technie models are limited to 512x512 base resolution for textures, regardless of if you actually need that much space.</li>
-<li> Textures must be in <b>.png</b> format. And are preferred to be at 4 times the resolution of the texture base size defined in the model (this is 4096x4096 in most cases).</li>
-<li> Audio must be in <b>.ogg</b> format and no more than 192kb/s.</li>
-</ul>
-</td>
-<td>
-<h2>Code:</h2>
-<ul>
-<li> Code must be well optimized.</li>
-<li> Setting up the project for InteliJ was made easy with the setup.bat file. Otherwise this project will follow standard Forge conventions. See
-<a href="http://www.minecraftforge.net/wiki/Installation/Source">http://www.minecraftforge.net/wiki/Installation/Source</a></li>
-<li> Regarding new features/behavior changes, please submit a new Suggestion to the issue tracker before you write any code.</li>
-</ul>
-</td>
-</tr>
-</table>
-
-<h1>License</h1>
-
-<table>
-<td>
-<h2>Simplified:</h2>
-<h3>Turbo Model Thingy</h3>
-<ul>
-<li> TMT has it's own license separate from this project. See <a href="https://github.com/EternalBlueFlame/Trains-In-Motion/blob/master/src/main/java/ebf/tim/models/tmt/ModelRendererTurbo.java#L21">src/main/java/ebf/tim/models/tmt/ModelRendererTurbo.java</a></li>
-</ul>
-
-<h3>Modpacks and Servers:</h3>
-<ul>
-<li> You are allowed to use the compiled mod in your public and private modpacks without permission.</li>
-<li> Whether directly, indirectly, or otherwise, we are not responsible for any damages to your server, be it in data, userbase, or any other form.</li>
-</ul>
-
-<h3>Videos and Media:</h3>
-<ul>
-<li> You may freely make, share, and earn revenue from videos, pictures, and reviews containing Trains in Motion.</li>
-</ul>
-<h3>Distribution:</h3>
-<ul>
-<li> Unless you are the creator of the contributed content in question, you may not redistribute the Trains in Motion source or assets, including but not limited to models, pictures, and sounds.</li>
-<li> Outside of a modpack you are strictly prohibited from distributing the compiled mod in any format or medium, the only exception being the official CurseForge page of Trains in Motion (Unreleased)</li>
-<li> Trains in Motion code is heavily documented in hopes it can teach some tricks to modding, but because it's difficult to learn from copy-pasting code you are limited on how much code you can copy, for exact limitations on this, see point 1.10 in the full license.</li>
-</ul>
-</td>
-<td>
-<h2>Full License:</h2>
-<ul>
-<li> TMT has it's own license separate from this project. See <a href="https://github.com/EternalBlueFlame/Trains-In-Motion/blob/master/src/main/java/ebf/tim/models/tmt/ModelRendererTurbo.java#L21">src/main/java/ebf/tim/models/tmt/ModelRendererTurbo.java</a></li>
-<li>See the full TiM License.md here: <a href="https://github.com/EternalBlueFlame/Trains-In-Motion/blob/master/TiM-License.md">https://github.com/EternalBlueFlame/Trains-In-Motion/blob/master/TiM-License.md</a> </li>
-</ul>
-</td>
-</table>
+	
+	</li><li>
+		<input type="checkbox"  id="spoiler7"/> 
+	<label for="spoiler7" class="banner">
+		<h2 class="hoverline">Textures</h2>
+	</label>
+	<div class="spoiler">
+	  <ul>
+		<li> Textures should be provided in 2 resolutions so they can properly support players of different GPU strengths</li>
+		<ul>
+			<li> 16 times the base resolution (so for example if the model resolution is 512x512, the texture should be 8192x8192). </li>
+			<li> 4 times the base resolution (so for example if the model resolution is 512x512, the texture should be 2048x2048). </li>
+		</ul>
+		<li> Textures must be shaded, the render does not do this for us, and if that feature is ever added it will only be an after-effect. </li>
+		<li> Textures must be built off base colors with known intention that they can and will have hues swapped later on. </li>
+		<li> If the textures are compressed, tell me ahead of time how you did it so I know whether or not to use my own forms of compression. </li>
+	  </ul>
+	</div>
+	
+	</li><li>
+		<input type="checkbox"  id="spoiler8"/> 
+	<label for="spoiler8" class="banner">
+		<h2 class="hoverline">Add-ons</h2>
+	</label>
+	<div class="spoiler">
+	NOTE: the rules for this section are intended only as guidelines, I don't take any responsibility for your add-ons so I don't really care what you do.
+	  <ul>
+		<li> Models should follow the size conventions mentioned before (I assume you want them to fit on the rails, and for the player to fit in the thing)</li>
+		<li> Models should not use shapes unless you make your own render to fix the shape rendering. So you probably still wanna use shapeboxes. </li>
+		<li> You can use the obj render if you want, just remember the entire model has to be cached on load and held on to throuought gameplay. So remember that when someone complains about RAM use. </li>
+		<li> Textures should follow the texture guidelines, if you wanna do different resolutions that's cool but the render treats your stuff the same as mine unless you make your own render. </li>
+		<li> While the resources are already there to allow you to make your own add-on mod to Trains in Motion, I will be making a tutorial for making addons, after the release of 0.2.7 </li>
+	  </ul>
+	</div>
+	
+	
+	</li><li>
+		<input type="checkbox"  id="spoiler9"/> 
+	<label for="spoiler9" class="banner">
+		<h2 class="hoverline">License and terms of use</h2>
+	</label>
+	<div class="spoiler">
+	By using the Trains in Motion mod in compiled or uncompiled format, and, or any of the files contained on https://github.com/EternalBlueFlame/Trains-In-Motion<br/>you inherently agree to the following<br/>
+	From here on, the term "this project" will mean "https://github.com/EternalBlueFlame/Trains-In-Motion"
+	  <ul>
+		<li> The render Turbo Model Thingy (TMT) has it's own license separate from this project.
+		<br/>See <a href="https://github.com/EternalBlueFlame/Trains-In-Motion/blob/master/src/main/java/ebf/tim/models/tmt/ModelRendererTurbo.java#L21">src/main/java/ebf/tim/models/tmt/ModelRendererTurbo.java</a></li>
+		<li> You are allowed to use the compiled mod in your public and private modpacks without permission.</li>
+		<li> Whether directly, indirectly, or otherwise, we are not responsible for any damages to your server, be it in data, userbase, or any other form.</li>
+		<li> You may freely make, share, and earn revenue from videos, pictures, and reviews containing Trains in Motion.</li>
+		<li> Unless you are the creator of the contributed content in question, or have written permission from the creator,
+		<br/>  you may not redistribute anything from this project, including but not limited to models, code, pictures, and sounds.</li>
+		<li> You also agree to the full license found at: 
+		<br/><a href="https://github.com/EternalBlueFlame/Trains-In-Motion/blob/master/TiM-License.md">https://github.com/EternalBlueFlame/Trains-In-Motion/blob/master/TiM-License.md</a></li>
+	  </ul>
+	</div></li>
+	
+	</ul>
   
-  </div>
-  
-  </div>
+  </div></div>
 
-  
   </body></html>
