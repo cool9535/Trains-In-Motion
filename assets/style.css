@@ -1,11 +1,11 @@
-.feed-container .content .item .title{
+.item .title{
   font-size:20px;
 }
 .feed-container {
     font-size: 13px;
 }
 
-.feed-container .content .item .description {
+.item .description {
 padding: 15px 15px 15px 15px;
 margin-bottom: 16px;
 box-shadow: inset 4px 4px 10px 1px #05329B;
