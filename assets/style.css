@@ -7,7 +7,7 @@ img {border:0px;}
 .feed-container .header a{text-decoration:none;color:#5a4860;}
 .feed-container .header a:hover{text-decoration:underline;color:#5a4860;}
 .feed-container .content{margin:0px;padding:0 3px;}
-.feed-container .content .item{margin:0 0 7px 0;padding:0 0 7px 0;border-bottom:1px dashed #CCC;}
+.fw-feed-item {margin:0 0 7px 0;padding:0 0 7px 0;border-bottom:1px dashed #CCC;}
 .feed-container .content .item .title{margin:1px 0 1px 3px;padding:1px 2px 1px 3px;color:#2196F3;font-weight:bold;font-size:20px;}
 .feed-container .content .item .title a{color:#5a4860;text-decoration:none;}
 .feed-container .content .item .title a:hover{text-decoration:underline;}
