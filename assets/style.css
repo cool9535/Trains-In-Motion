@@ -1,0 +1,13 @@
+.feed-container .content .item .title{
+  font-size:20px;
+}
+.feed-container {
+    font-size: 13px;
+}
+
+.feed-container .content .item .description {
+padding: 15px 15px 15px 15px;
+margin-bottom: 16px;
+box-shadow: inset 4px 4px 10px 1px #05329B;
+border-radius: 15px;
+}
