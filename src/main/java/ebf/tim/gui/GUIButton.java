@@ -1,12 +1,12 @@
 package ebf.tim.gui;
 
 import ebf.tim.entities.GenericRailTransport;
-import ebf.tim.models.tmt.Tessellator;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.util.StatCollector;
 import org.lwjgl.opengl.GL11;
+import fexcraft.tmt.slim.Tessellator;
 
 import java.util.Collections;
 import java.util.List;

@@ -4,6 +4,7 @@ package ebf.tim.utility;
 import cofh.api.energy.IEnergyContainerItem;
 import ebf.tim.entities.EntityTrainCore;
 import ebf.tim.entities.GenericRailTransport;
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
@@ -45,7 +46,7 @@ public class FuelHandler{
 	 */
 	public static FluidStack isUseableFluid(ItemStack itemStack, GenericRailTransport transport){
 		switch (transport.getType()){
-			case MAGLEV:case ELECTRIC:{
+			case ELECTRIC:{
 				if (itemStack.getItem() == Items.redstone){
 					return new FluidStack(FluidRegistry.WATER, 250);
 				} else if (itemStack.getItem() == Item.getItemFromBlock(Blocks.redstone_block)){
@@ -92,7 +93,7 @@ public class FuelHandler{
 			burnTime--;
 		}
 		//if there's a fluid item in the slot and the train can consume the entire thing
-		if (train.getStackInSlot(1) != null &&
+		if (train.getStackInSlot(1) != null && FluidContainerRegistry.getFluidForFilledItem(train.getStackInSlot(1)) !=null &&
 				train.fill(null, isUseableFluid(train.getStackInSlot(1), train), false) >= FluidContainerRegistry.getFluidForFilledItem(train.getStackInSlot(1)).amount) {
 			train.fill(null, isUseableFluid(train.getStackInSlot(1), train), true);
 			if (!train.getBoolean(GenericRailTransport.boolValues.CREATIVE)) {
@@ -129,7 +130,7 @@ public class FuelHandler{
 			} else if (!train.getBoolean(GenericRailTransport.boolValues.CREATIVE)){
 				train.worldObj.createExplosion(train, train.posX, train.posY, train.posZ, 5f, false);
 				train.dropItem(train.getItem(), 1);
-				train.attackEntityFromPart(null, new EntityDamageSource("overheat", train),100);
+				train.attackEntityFrom(new EntityDamageSource("overheat", train),100);
 			}
 			train.setBoolean(GenericRailTransport.boolValues.RUNNING, true);
 		} else {
@@ -172,22 +173,38 @@ public class FuelHandler{
 
 
 	public static void manageTanker(GenericRailTransport transport){
-		//consume fluid if the top slot has a fluid container.
-		if (transport.getStackInSlot(0) != null && isUseableFluid(transport.getStackInSlot(0), transport) != null &&
-				transport.fill(null, isUseableFluid(transport.getStackInSlot(0), transport), false) >= FluidContainerRegistry.getFluidForFilledItem(transport.getStackInSlot(0)).amount) {
-			transport.fill(null, isUseableFluid(transport.getStackInSlot(0), transport), true);
-			if (!transport.getBoolean(GenericRailTransport.boolValues.CREATIVE)) {
-				transport.setInventorySlotContents(0, new ItemStack(Items.bucket,1));
-			}
-		}
-		//empty the tank if the bottom slot contains a bucket.
-		if (transport.getStackInSlot(1) != null &&
-				FluidContainerRegistry.getFluidForFilledItem(transport.getStackInSlot(1)) == null &&
-				transport.drain(null, 1000, false) != null && transport.drain(null, 1000, false).amount >= 1000) {
+		if (transport.getStackInSlot(0) != null){
+			//fill from top slot
+			if (isUseableFluid(transport.getStackInSlot(0), transport) != null &&
+					transport.fill(null, isUseableFluid(transport.getStackInSlot(0), transport), false) >= FluidContainerRegistry.getFluidForFilledItem(transport.getStackInSlot(0)).amount) {
 
-			transport.setInventorySlotContents(1, FluidContainerRegistry.fillFluidContainer(transport.drain(null, 1000, false), transport.getStackInSlot(1)));
-			if (!transport.getBoolean(GenericRailTransport.boolValues.CREATIVE)) {
-				transport.drain(null, 1000, true);
+				if (!transport.getBoolean(GenericRailTransport.boolValues.CREATIVE) && (transport.getStackInSlot(1) == null || transport.getStackInSlot(1).getItem() == Items.bucket && transport.getStackInSlot(1).stackSize <16)){
+					transport.fill(null, isUseableFluid(transport.getStackInSlot(0), transport), true);
+					transport.getStackInSlot(0).stackSize--;
+					if (transport.getStackInSlot(0) != null && transport.getStackInSlot(0).stackSize <=0){
+						transport.setInventorySlotContents(0, null);
+					}
+					if (transport.getStackInSlot(1) == null ) {
+						transport.setInventorySlotContents(1, new ItemStack(Items.bucket, 1));
+					} else if (transport.getStackInSlot(1).getItem() == Items.bucket && transport.getStackInSlot(1).stackSize <16) {
+						transport.getStackInSlot(1).stackSize++;
+					}
+				} else if (transport.getBoolean(GenericRailTransport.boolValues.CREATIVE)){
+					transport.fill(null, isUseableFluid(transport.getStackInSlot(0), transport), true);
+				}
+			}
+			//drain from top slot
+			else if (transport.getStackInSlot(1) == null && isUseableFluid(transport.getStackInSlot(0), transport) == null &&
+				transport.drain(null, 1000, false) != null && transport.drain(null, 1000, false).amount >= 1000){
+				transport.setInventorySlotContents(1, FluidContainerRegistry.fillFluidContainer(transport.drain(null, 1000, false), transport.getStackInSlot(0)));
+				if (transport.getStackInSlot(0).stackSize == 1) {
+					transport.setInventorySlotContents(0, null);
+				} else {
+					transport.getStackInSlot(0).stackSize--;
+				}
+				if (!transport.getBoolean(GenericRailTransport.boolValues.CREATIVE)) {
+					transport.drain(null, 1000, true);
+				}
 			}
 		}
 	}

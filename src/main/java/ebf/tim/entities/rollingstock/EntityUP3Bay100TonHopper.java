@@ -6,14 +6,16 @@ import ebf.tim.entities.trains.EntityBrigadelok080;
 import ebf.tim.items.ItemTransport;
 import ebf.tim.models.Bogie;
 import ebf.tim.models.rollingstock.UP3Bay100TonHopper;
-import ebf.tim.models.tmt.ModelBase;
-import ebf.tim.models.tmt.Vec3d;
+import fexcraft.tmt.slim.ModelBase;
+import fexcraft.tmt.slim.Vec3d;
+import ebf.tim.registry.URIRegistry;
 import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,7 +32,7 @@ public class EntityUP3Bay100TonHopper extends RollingstockBase {
     public static final String[] itemDescription = new String[]{
             "\u00A77" + StatCollector.translateToLocal("menu.item.weight") +": 2" + StatCollector.translateToLocal("menu.item.tons"),
             "\u00A77" + StatCollector.translateToLocal("menu.item.sizeof") +": 27" + StatCollector.translateToLocal("menu.item.slots")};
-    public static final Item thisItem = new ItemTransport(itemDescription, EntityUP3Bay100TonHopper.class).setUnlocalizedName("hoppercar");
+    public static final Item thisItem = new ItemTransport(new EntityUP3Bay100TonHopper(null)).setUnlocalizedName("hoppercar");
 
     public EntityUP3Bay100TonHopper(UUID owner, World world, double xPos, double yPos, double zPos) {
         super(owner, world, xPos, yPos, zPos);
@@ -49,12 +51,48 @@ public class EntityUP3Bay100TonHopper extends RollingstockBase {
     @Override
     public List<Double> getRenderBogieOffsets(){return  Arrays.asList(-1.1, 1.1);}
     @Override
-    public double getLengthFromCenter(){return 1D;}
+    public int bogieLengthFromCenter(){return 1;}
+
+    @Override
+    public float getRenderScale() {
+        return 0.0625f;
+    }
+
+    @Override
+    public boolean isReinforced() {
+        return false;
+    }
+
+    @Override
+    public int getTankCapacity() {
+        return 0;
+    }
+
+    @Override
+    public int getRFCapacity() {
+        return 0;
+    }
+
+    @Override
+    public void manageFuel() {
+
+    }
+
+    @Override
+    public float weightKg() {
+        return 1814.3f;
+    }
+
+    @Override
+    public float getMaxFuel() {
+        return 0;
+    }
+
     /**
      * <h2>Inventory Size</h2>
      */
     @Override
-    public TrainsInMotion.inventorySizes getInventorySize(){return TrainsInMotion.inventorySizes.FREIGHT_THREE;}
+    public int getInventoryRows(){return 3;}
     /**
      * <h2>Type</h2>
      */
@@ -76,14 +114,24 @@ public class EntityUP3Bay100TonHopper extends RollingstockBase {
     @Override
     public Vec3d getLampOffset(){return new Vec3d(0,0,0);}
 
+    @Override
+    public float getPistonOffset() {
+        return 0;
+    }
+
+    @Override
+    public float[][] getSmokeOffset() {
+        return null;
+    }
+
 
     @Override
     public Bogie[] getBogieModels(){return new Bogie[]{GenericCMDBogie(), GenericCMDBogie()};}
     @Override
-    public ResourceLocation getTexture(){return null;} //URIRegistry.MODEL_ROLLINGSTOCK_TEXTURE.getResource("null.png");}
+    public ResourceLocation getTexture(){return URIRegistry.HD_MODEL_ROLLINGSTOCK_TEXTURE.getResource("up_3_bay_100_ton_open_hopper.png");} //URIRegistry.MODEL_ROLLINGSTOCK_TEXTURE.getResource("null.png");}
 
     @Override
-    public ModelBase getModel(){return new UP3Bay100TonHopper();}
+    public List<? extends ModelBase> getModel(){return Collections.singletonList(new UP3Bay100TonHopper());}
 
     /**
      * <h2>pre-asigned values</h2>

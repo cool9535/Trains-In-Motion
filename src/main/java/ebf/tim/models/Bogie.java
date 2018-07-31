@@ -1,9 +1,9 @@
 package ebf.tim.models;
 
 import ebf.tim.entities.GenericRailTransport;
-import ebf.tim.models.tmt.ModelBase;
 import ebf.tim.utility.RailUtility;
 import net.minecraft.util.ResourceLocation;
+import fexcraft.tmt.slim.ModelBase;
 
 /**
  * <h1>New Bogie</h1>
@@ -53,7 +53,7 @@ public class Bogie {
             if ((position[0] - prevPos[0] <0.01 && position[0] - prevPos[0] >-0.01) && (position[2] - prevPos[2] <0.01 && position[2] - prevPos[2] >-0.01)){
                 return;
             }
-            rotationYaw = (float) Math.toDegrees(Math.atan2(position[2] - prevPos[2], position[0] - prevPos[0]));
+            rotationYaw = RailUtility.atan2degreesf(position[2] - prevPos[2], position[0] - prevPos[0]);
             prevPos = position;
         } else {
             sqrtPos = Math.sqrt(entity.posX * entity.posX) + Math.sqrt(entity.posZ * entity.posZ);
@@ -61,6 +61,6 @@ public class Bogie {
     }
 
     private boolean shouldUpdate(){
-        return sqrtPos -1 > oldSqrtPos || sqrtPos + 1 <oldSqrtPos;
+        return sqrtPos -2 > oldSqrtPos || sqrtPos + 2 <oldSqrtPos;
     }
 }

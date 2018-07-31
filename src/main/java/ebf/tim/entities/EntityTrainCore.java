@@ -6,10 +6,12 @@ import ebf.tim.utility.FuelHandler;
 import ebf.tim.utility.RailUtility;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -25,8 +27,9 @@ public class EntityTrainCore extends GenericRailTransport {
     public FuelHandler fuelHandler = new FuelHandler();
     /**defines the speed percentage the user is attempting to apply.*/
     public int accelerator =0;
-    /**used to initialize all the vectors that are used to calculate everything from movement to linking, this is so we don't have to make new variable instances, saves CPU.*/
-    private double[][] vectorCache = new double[4][3];
+
+    public double excessTorque =0;
+
 
 
 
@@ -81,6 +84,8 @@ public class EntityTrainCore extends GenericRailTransport {
         accelerator = tag.getInteger(NBTKeys.accelerator);
         this.fuelHandler.heatC = tag.getFloat(NBTKeys.transportFuel);
         this.fuelHandler.steamTank = tag.getInteger(NBTKeys.transportSteam);
+        vectorCache[7][0] = tag.getDouble(NBTKeys.trainSpeed);
+
 
     }
     /**saves the entity to server world*/
@@ -90,6 +95,7 @@ public class EntityTrainCore extends GenericRailTransport {
         tag.setInteger(NBTKeys.accelerator, accelerator);
         tag.setFloat(NBTKeys.transportFuel, fuelHandler.heatC);
         tag.setInteger(NBTKeys.transportSteam, fuelHandler.steamTank);
+        tag.setDouble(NBTKeys.trainSpeed, vectorCache[7][0]);
 
     }
 
@@ -102,14 +108,36 @@ public class EntityTrainCore extends GenericRailTransport {
 
 
     /**
+     * <h2>Max speed</h2>
+     * @return the value of the max speed in blocks per second(km/h * 0.277778) scaled to the size (1/7.68)
+     * for example if the train speed is 25, the calculation would be ((25*0.277778)* 0.130208333) = 0.90422525
+     * or simplified to 25 * 0.0361690103 = 0.90422525
+     */
+    public float getProcessedMaxSpeed(){
+        return (getMaxSpeed() * 0.0361690103f);
+    }
+
+
+    public float getPower(){
+        if (transportMetricHorsePower()<1){
+            return ((transportTractiveEffort() *
+                    (Math.abs(motionX)+Math.abs(motionZ))<1?1f:(float)(Math.abs(motionX)+Math.abs(motionZ)))
+                            *0.0318309886f) * (accelerator*0.166666667f);
+        } else {
+            return transportMetricHorsePower() * (accelerator*0.166666667f);
+        }
+    }
+
+    /**
      * <h2>Calculate speed increase rate</h2>
      *
      * speed calculation provided by zodiacmal
      */
     public void calculateAcceleration(){
         boolean hasReversed = false;
-        float weight = weightKg();
-        float hp = getHorsePower();
+        float weight = weightKg() * (getBoolean(boolValues.BRAKE)?4:1) * (frontBogie.isOnSlope?2:1) * (backBogie.isOnSlope?2:1);
+        float hp = getPower();
+        float tractiveWeight=weight;
         List<GenericRailTransport> checked = new ArrayList<>();
         checked.add(this);
         GenericRailTransport front = null;
@@ -122,17 +150,19 @@ public class EntityTrainCore extends GenericRailTransport {
 
         while(front != null){
             //calculate the speed modification
-            if(!front.getType().isTrain() && front.weightKg()!=0){
-                weight+= front.getBoolean(boolValues.BRAKE)?front.weightKg()*1.25f:front.weightKg();
+            if(!(front instanceof EntityTrainCore) && front.weightKg()!=0){
+                weight+= front.weightKg() * (getBoolean(boolValues.BRAKE)?2:1) * (front.frontBogie.isOnSlope?2:1) * (front.backBogie.isOnSlope?2:1);
             } else if (front instanceof EntityTrainCore) {
-                hp += front.getBoolean(boolValues.RUNNING)?((EntityTrainCore)front).getHorsePower()*0.75f:0;
-                weight+= front.getBoolean(boolValues.BRAKE)?front.weightKg()*1.25f:front.weightKg();
+                hp += front.getBoolean(boolValues.RUNNING)?((EntityTrainCore)front).getPower()*0.75f:0;
+                weight+= front.weightKg() * (getBoolean(boolValues.BRAKE)?4:1) * (front.frontBogie.isOnSlope?2:1) * (front.backBogie.isOnSlope?2:1);
+                tractiveWeight+= front.weightKg() * (getBoolean(boolValues.BRAKE)?4:1) * (front.frontBogie.isOnSlope?2:1) * (front.backBogie.isOnSlope?2:1);
             }
 
             //add the one we just used to the checked list
             checked.add(front);
             //loop to the next rollingstock.
-            Entity test = frontLinkedID!=null?worldObj.getEntityByID(front.frontLinkedID):null;
+            @Nullable
+            Entity test = front.frontLinkedID!=null?worldObj.getEntityByID(front.frontLinkedID):null;
             //if it's null and we haven't reversed yet, start the loop over from the back. if we have reversed though, end the loop.
             if(test == null){
                 if (!hasReversed){
@@ -155,8 +185,37 @@ public class EntityTrainCore extends GenericRailTransport {
             }
         }
 
+
+
         //745.7 converts watts to horsepower, but considering the scale, it should be substantially less
-        vectorCache[0][0] = (((0.07457 * (accelerator / 6D)) * hp) / weight);
+        if (accelerator !=0) {
+            //speed is the calculated horse power divided by weight, divided by the percentage of current speed of max.
+            //the maximum value of the above is 1, which is multiplied times the horse power converted to watts, anything over the 1 is wheel slippage.
+            excessTorque = ((hp/weight) * 0.7457)/((Math.abs(motionX) + Math.abs(motionZ))/getMaxSpeed());
+            vectorCache[7][0] += ((hp/weight) * 0.7457);
+        } else {
+            excessTorque =0;
+            if (vectorCache[7][0]>0) {
+                vectorCache[7][0] *= (1 - (0.005* (weight * 0.0007457)));
+                if (vectorCache[7][0] <0){
+                    vectorCache[7][0] =0;
+                }
+            } else {
+                vectorCache[7][0] *= (1 - (0.005* (weight * 0.0007457)));
+                if (vectorCache[7][0] >0){
+                    vectorCache[7][0] =0;
+                }
+            }
+        }
+        if (vectorCache[7][0]>-0.005 && vectorCache[7][0]<0.005){
+            vectorCache[7][0] = 0;
+        }
+
+        if (vectorCache[7][0] > getProcessedMaxSpeed()){
+            vectorCache[7][0] = getProcessedMaxSpeed();
+        } else if (vectorCache[7][0] < -getProcessedMaxSpeed()){
+            vectorCache[7][0] = -getProcessedMaxSpeed();
+        }
 
 
     }
@@ -171,24 +230,27 @@ public class EntityTrainCore extends GenericRailTransport {
     @Override
     public void onUpdate() {
 
-        if(accelerator!=0 && frontBogie != null && backBogie != null) {
-            //every second, or when the speed is 0, re-calculate the speed.
-            if(ticksExisted %20==0){
-                calculateAcceleration();
+        if(frontBogie != null && backBogie != null && !worldObj.isRemote) {
+            //twice a second, re-calculate the speed.
+            if(ticksExisted %10==0){
+                //stop calculation if it can't move
+                if (((getType() == TrainsInMotion.transportTypes.NUCLEAR_STEAM || getType() == TrainsInMotion.transportTypes.STEAM) && fuelHandler.steamTank< getTankCapacity()*0.25)//check for steam fuel
+                        || (getType() == TrainsInMotion.transportTypes.ELECTRIC && getTankAmount()<1)//check for electric fuel
+                ) {
+                    vectorCache[7][0] = 0;
+                    setBoolean(boolValues.RUNNING, false);
+                } else {
+                    calculateAcceleration();
+                }
             }
+            vectorCache[6] = RailUtility.rotatePoint(vectorCache[7], rotationPitch, rotationYaw, 0);
+            frontBogie.setVelocity(vectorCache[6][0], vectorCache[6][1], vectorCache[6][2]);
+            backBogie.setVelocity(vectorCache[6][0], vectorCache[6][1], vectorCache[6][2]);
 
-            //cap speed to max.
-            if (frontBogie.motionX+ frontBogie.motionZ > getMaxSpeed() || frontBogie.motionX+ frontBogie.motionZ <-getMaxSpeed() ||
-                    ((getType() == TrainsInMotion.transportTypes.NUCLEAR_STEAM || getType() == TrainsInMotion.transportTypes.STEAM) && fuelHandler.steamTank< getTankCapacity()*0.25)//check for steam fuel
-                    || (getType() == TrainsInMotion.transportTypes.ELECTRIC && getTankAmount()<1)//check for electric fuel
-                    ) {
-                vectorCache[0][0] = 0;
-            }
-
-
-            vectorCache[1] = RailUtility.rotatePoint(vectorCache[0], rotationPitch, rotationYaw, 0);
-            frontBogie.addVelocity(vectorCache[1][0], vectorCache[1][1], vectorCache[1][2]);
-            backBogie.addVelocity(vectorCache[1][0], vectorCache[1][1], vectorCache[1][2]);
+            frontVelocityX = frontBogie.motionX;
+            frontVelocityZ = frontBogie.motionZ;
+            backVelocityX = backBogie.motionX;
+            backVelocityZ = backBogie.motionZ;
         }
 
         if (updateWatchers){
@@ -200,16 +262,16 @@ public class EntityTrainCore extends GenericRailTransport {
     /**
      * <h2>linking management</h2>
      * this is an override to make sure rollingstock doesn't push trains
-     * @see GenericRailTransport#manageLinks()
+     * @see GenericRailTransport#manageLinks(GenericRailTransport)
      */
     @Override
-    public void manageLinks(){}
+    public void manageLinks(GenericRailTransport linkedTransport){}
 
 
     @Override
-    public boolean ProcessPacket(int functionID){
-        if (!super.ProcessPacket(functionID)){
-            switch (functionID){
+    public boolean interact(EntityPlayer player, boolean isFront, boolean isBack, int key) {
+        if (!super.interact(player, isFront, isBack, key)){
+            switch (key){
                 case 8:{ //toggle ignition
                     setBoolean(boolValues.RUNNING, !getBoolean(boolValues.RUNNING));
                     return true;
@@ -218,17 +280,17 @@ public class EntityTrainCore extends GenericRailTransport {
                     worldObj.playSoundEffect(posX, posY, posZ, getHorn().getResourcePath(), 1, 0.5f);
                     return true;
                 }case 2:{ //decrease speed
-                    if (accelerator >-6) {
+                    if (accelerator >-6 && getBoolean(boolValues.RUNNING)) {
                         accelerator--;
                         updateWatchers = true;
-                        return true;
                     }
+                    return true;
                 }case 3:{ //increase speed
-                    if (accelerator <6) {
+                    if (accelerator <6 && getBoolean(boolValues.RUNNING)) {
                         accelerator++;
                         updateWatchers = true;
-                        return true;
                     }
+                    return true;
                 }
             }
         }
@@ -240,8 +302,10 @@ public class EntityTrainCore extends GenericRailTransport {
      * these functions are overridden by classes that extend this so that way the values can be changed indirectly.
      */
     /**gets the max speed of the transport in blocks per second*/
+    @Deprecated
     public float getMaxSpeed(){return 0;}
     /**gets the acceleration rate of the train*/
+    @Deprecated
     public float getHorsePower(){return 100f;}
     /**gets the resource location for the horn sound*/
     public ResourceLocation getHorn(){return null;}

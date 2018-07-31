@@ -3,16 +3,18 @@ package ebf.tim.entities.trains;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import ebf.tim.TrainsInMotion;
+import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TrainBase;
 import ebf.tim.entities.EntityTrainCore;
 import ebf.tim.entities.GenericRailTransport;
 import ebf.tim.items.ItemTransport;
 import ebf.tim.models.Bogie;
-import ebf.tim.models.tmt.ModelBase;
-import ebf.tim.models.tmt.Vec3d;
+import fexcraft.tmt.slim.ModelBase;
+import fexcraft.tmt.slim.Vec3d;
 import ebf.tim.models.trains.Brigadelok_080;
 import ebf.tim.registry.TransportRegistry;
 import ebf.tim.registry.URIRegistry;
+import ebf.tim.utility.ClientProxy;
 import ebf.tim.utility.FuelHandler;
 import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
@@ -24,6 +26,7 @@ import net.minecraftforge.fluids.FluidRegistry;
 
 import javax.annotation.Nullable;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -54,13 +57,8 @@ public class EntityBrigadelok080 extends TrainBase {
      *     The last part defines the unlocalized name, this is used for the item name, entity name, and language file entries.
      */
 
-    private static final String[] itemDescription = new String[]{
-            "\u00A77" + StatCollector.translateToLocal("menu.item.era") +  ": " + StatCollector.translateToLocal("menu.steam"),
-            "\u00A77" + StatCollector.translateToLocal("menu.item.year") +": 1918",
-            "\u00A77" + StatCollector.translateToLocal("menu.item.country") + ": " + StatCollector.translateToLocal("menu.item.germany"),
-            "\u00A77" + StatCollector.translateToLocal("menu.item.speed") +": 70.81km",
-            "\u00A77" + StatCollector.translateToLocal("menu.item.pullingpower") +": ??? " + StatCollector.translateToLocal("menu.item.tons")};
-    public static final Item thisItem = new ItemTransport(itemDescription, EntityBrigadelok080.class).setUnlocalizedName("brigadelok080");
+
+    public static final Item thisItem = new ItemTransport(new EntityBrigadelok080(null) ).setUnlocalizedName("brigadelok080");
 
     /**
      * these basic constructors only need to have their names changed to that of this class, that is assuming your editor doesn't automatically do that.
@@ -74,6 +72,34 @@ public class EntityBrigadelok080 extends TrainBase {
         super(world);
     }
 
+    @Override
+    public String transportName(){return "Henschel Brigadelok";}
+    @Override
+    public String transportcountry(){return "Germany";}
+    @Override
+    public int transportYear(){return 1918;}
+    @Override
+    public String transportEra(){return "Steam";}
+    @Override
+    public float transportTopSpeed(){return 70.81f;}
+    @Override
+    public boolean isFictional(){return false;}
+    @Override
+    public float transportTractiveEffort(){return 0;}
+    @Override
+    public float transportMetricHorsePower(){return 0;}
+
+
+    @Override
+    public ResourceLocation getDefaultTexture(){
+        return new ResourceLocation(TrainsInMotion.MODID, "textures/sd/train/brigadelok_080.png");
+    }
+    @Override
+    public void registerSkins(){
+        SkinRegistry.addSkin(this.getClass(),TrainsInMotion.MODID, "textures/sd/train/brigadelok_080.png", null,
+        "default", "The standard design used by Germany in WWI");
+    }
+
     /*
      * <h1>Variable Overrides</h1>
      * We override the functions defined in the super here, to give them different values.
@@ -84,11 +110,10 @@ public class EntityBrigadelok080 extends TrainBase {
     /**
      * <h2>Max speed</h2>
      * <h4>TRAINS ONLY.</h4>
-     * @return the value of the max speed in blocks per second(km/h * 0.277778) scaled to the train size (1/7.68)
-     * in this case the train speed is 25, so the calculation would be ((25*0.277778)* 0.130208333) = 0.9042252581
+     * @return the value of the max speed in km/h
      */
     @Override
-    public float getMaxSpeed(){return 0.9042252581f;}
+    public float getMaxSpeed(){return 25;}
     /**
      * <h2>Bogie Offset</h2>
      * @return the list of offsets for the bogies, 0 being the center. negative values are towards the front of the train.
@@ -101,7 +126,7 @@ public class EntityBrigadelok080 extends TrainBase {
      * @return the size of the inventory not counting any fuel or crafting slots, those are defined by the type.
      */
     @Override
-    public TrainsInMotion.inventorySizes getInventorySize(){return TrainsInMotion.inventorySizes.FREIGHT_ONE;}
+    public int getInventoryRows(){return 1;}
     /**
      * <h2>Type</h2>
      * @return the type which will define it's features, GUI, a degree of storage (like crafting slots), and a number of other things.
@@ -124,7 +149,7 @@ public class EntityBrigadelok080 extends TrainBase {
      *     Only the first 3 values of each set of floats are actually used.
      */
     @Override
-    public double[][] getRiderOffsets(){return new double[][]{{1.3f,1.1f, 0f}};}
+    public double[][] getRiderOffsets(){return new double[][]{{1.3f,1.2f, 0f}};}
     /**
      * <h2>Acceleration</h2>
      * <h4>TRAINS ONLY.</h4>
@@ -138,10 +163,12 @@ public class EntityBrigadelok080 extends TrainBase {
 
     /**
      * <h2>Hitbox offsets</h2>
-     * @return defines the positions for the hitboxes in blocks. 0 being the center, negative values being towards the front.
+     * @return defines the positions for the hitboxes in blocks. 0 being the center, negative values being towards the front. the first and last values define the positions of the couplers
      */
     @Override
     public double[][] getHitboxPositions(){return new double[][]{{-1.75d,0.25d,0d},{-1.15d,0.25d,0d},{0d,0.25d,0d},{1.15d, 0.25d,0d},{1.75d,0.25d,0d}};}
+
+
     /**
      * <h2>Lamp offset</h2>
      * @return defines the offset for the lamp in blocks.
@@ -169,6 +196,16 @@ public class EntityBrigadelok080 extends TrainBase {
     @Override
     public float[][] getSmokeOffset(){return new float[][]{{-1,0,0.5f,0xB2B2B2,30},{-1,0,-0.5f,0xB2B2B2,30},{-1.4f,2f,0,0x3C3C3C,500}};}
 
+    @Override
+    public int bogieLengthFromCenter() {
+        return 1;
+    }
+
+    @Override
+    public float getRenderScale() {
+        return  0.0625f;
+    }
+
     /**
      * <h2>rider sit or stand</h2>
      * @return true if the rider(s) should be sitting, false if the rider should be standing.
@@ -191,6 +228,11 @@ public class EntityBrigadelok080 extends TrainBase {
      */
     @Override
     public int getTankCapacity(){return 9161;}
+
+    @Override
+    public int getRFCapacity() {
+        return 0;
+    }
 
     /**
      * <h2>fluid filter</h2>
@@ -221,12 +263,15 @@ public class EntityBrigadelok080 extends TrainBase {
     }
 
     @Override
-    public Bogie[] getBogieModels(){return null;}
-    @Override
-    public ResourceLocation getTexture(){return URIRegistry.MODEL_TRAIN_TEXTURE.getResource("brigadelok_080.png");}
+    public ResourceLocation getTexture(){
+        return SkinRegistry.getTexture(this.getClass(), this.dataWatcher.getWatchableObjectString(24));
+    }
 
     @Override
-    public ModelBase getModel(){return new Brigadelok_080();}
+    public Bogie[] getBogieModels(){return null;}
+
+    @Override
+    public List<? extends ModelBase> getModel(){return Collections.singletonList(new Brigadelok_080());}
 
     /**
      * <h2>sets the resource location for sounds, like horn and the sound made for the engine running</h2>

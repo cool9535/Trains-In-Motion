@@ -12,9 +12,9 @@ import cpw.mods.fml.relauncher.Side;
 import ebf.tim.blocks.OreGen;
 import ebf.tim.entities.EntityBogie;
 import ebf.tim.entities.EntitySeat;
+import ebf.tim.items.ItemAdminBook;
 import ebf.tim.items.TiMTab;
-import ebf.tim.networking.PacketKeyPress;
-import ebf.tim.networking.PacketMount;
+import ebf.tim.networking.PacketInteract;
 import ebf.tim.networking.PacketRemove;
 import ebf.tim.registry.TransportRegistry;
 import ebf.tim.utility.ChunkHandler;
@@ -44,7 +44,7 @@ public class TrainsInMotion {
     /**the ID of the mod and the version displayed in game, as well as used for version check in the version.txt file*/
     public static final String MODID = "trainsinmotion";
     /**the version identifier of the mod*/
-    public static final String MOD_VERSION="0.2.6.5 alpha";
+    public static final String MOD_VERSION="0.3 pre-alpha";
     /**an instance of the mod*/
     @Mod.Instance(MODID)
     public static TrainsInMotion instance;
@@ -56,7 +56,7 @@ public class TrainsInMotion {
      *@see ClientProxy
      */
     @SidedProxy(clientSide = "ebf.tim.utility.ClientProxy", serverSide = "ebf.tim.utility.CommonProxy")
-    private static CommonProxy proxy;
+    public static CommonProxy proxy;
 
     /**instance the network wrapper for the channels.
      * Every wrapper runs on it's own thread, so heavy traffic should go on it's own wrapper, using channels to separate packet types.*/
@@ -75,15 +75,16 @@ public class TrainsInMotion {
      */
 
      /**define the transport types*/
+     @Deprecated //obsolete in favor of interfaces or type classes
     public enum transportTypes {
-        STEAM,DIESEL,HYDROGEN_DIESEL,ELECTRIC,NUCLEAR_STEAM,NUCLEAR_ELECTRIC,MAGLEV, //trains
+        STEAM,DIESEL,HYDROGEN_DIESEL,ELECTRIC,NUCLEAR_STEAM,NUCLEAR_ELECTRIC, //trains
         PASSENGER, FREIGHT, HOPPER, TANKER, WORKCAR, SLUG, B_UNIT, //generic rollingstock
         LOGCAR, RAILCAR, FREEZERCAR, LAVATANKER, GRAINHOPPER, COALHOPPER, OILCAR, //specific cargo rollingstock
         FUELTANKER, TENDER, ELECTRIC_TENDER, JUKEBOX, TRACKBUILDER; //specialized Rollingstock
 
          public boolean isTrain(){
              return this == STEAM || this == DIESEL || this == HYDROGEN_DIESEL || this == ELECTRIC ||
-                     this == NUCLEAR_STEAM || this == NUCLEAR_ELECTRIC || this == MAGLEV || this == B_UNIT;
+                     this == NUCLEAR_STEAM || this == NUCLEAR_ELECTRIC || this == B_UNIT;
          }
          public boolean isHopper(){
              return this == HOPPER || this == GRAINHOPPER || this == COALHOPPER;
@@ -92,19 +93,8 @@ public class TrainsInMotion {
              return this == TANKER || this == LAVATANKER || this == OILCAR || this == FUELTANKER;
          }
     }
-    /**define the inventory size values, this lets us get values to define rows and columns rather than just overall size.*/
-    public enum inventorySizes{NULL(0), CRAFTING(1),
-        FREIGHT_ONE(1), FREIGHT_TWO(2), FREIGHT_THREE(3), FREIGHT_FOUR(4), FREIGHT_FIVE(5), FREIGHT_SIX(6),
-        FREIGHT_SEVEN(7), FREIGHT_EIGHT(8), FREIGHT_NINE(9), FREIGHT_TEN(10), FREIGHT_ELEVEN(11);
-        private int row;
-        inventorySizes(int row){
-            this.row = row;
-        }
-        public int getRow() {
-            return row;
-        }
-    }
     /**defines the type of block, so that way our generic block classes can change the functionality without needing a bunch of different classes.*/
+    @Deprecated //obsolete in favor of interfaces or type classes
     public enum blockTypes {
         CRAFTING, CONTAINER, COSMETIC, SWITCH
     }
@@ -150,10 +140,13 @@ public class TrainsInMotion {
 
         //register the networking instances and channels
         TrainsInMotion.keyChannel = NetworkRegistry.INSTANCE.newSimpleChannel("TiM.key");
-        TrainsInMotion.keyChannel.registerMessage(PacketKeyPress.Handler.class, PacketKeyPress.class, 1, Side.SERVER);
-        TrainsInMotion.keyChannel.registerMessage(PacketMount.Handler.class, PacketMount.class, 2, Side.SERVER);
-        TrainsInMotion.keyChannel.registerMessage(PacketRemove.Handler.class, PacketRemove.class, 3, Side.SERVER);
+        TrainsInMotion.keyChannel.registerMessage(PacketInteract.Handler.class, PacketInteract.class, 1, Side.SERVER);
+        TrainsInMotion.keyChannel.registerMessage(PacketRemove.Handler.class, PacketRemove.class, 2, Side.SERVER);
+        TrainsInMotion.keyChannel.registerMessage(ItemAdminBook.PacketAdminBook.Handler.class, ItemAdminBook.PacketAdminBook.class, 3, Side.CLIENT);
+        TrainsInMotion.keyChannel.registerMessage(ItemAdminBook.PacketAdminBookClient.Handler.class, ItemAdminBook.PacketAdminBookClient.class, 4, Side.SERVER);
 
+
+        proxy.register();
         //register the worldgen
         GameRegistry.registerWorldGenerator(new OreGen(), 0);
         //register the event handler
@@ -162,7 +155,6 @@ public class TrainsInMotion {
 
         //register GUI, model renders, Keybinds, client only blocks, and HUD
         NetworkRegistry.INSTANCE.registerGuiHandler(instance, proxy);
-        proxy.register();
     }
 
 }

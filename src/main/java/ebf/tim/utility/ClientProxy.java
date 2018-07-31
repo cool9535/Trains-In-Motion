@@ -7,12 +7,13 @@ import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
-import ebf.tim.blocks.BlockRailOverride;
+import ebf.tim.blocks.RailTileEntity;
 import ebf.tim.blocks.LampBlock;
 import ebf.tim.blocks.TileEntityStorage;
 import ebf.tim.entities.EntityBogie;
 import ebf.tim.entities.EntitySeat;
 import ebf.tim.entities.GenericRailTransport;
+import ebf.tim.gui.GUIAdminBook;
 import ebf.tim.gui.GUITrainTable;
 import ebf.tim.gui.GUITransport;
 import ebf.tim.gui.HUDTrain;
@@ -47,6 +48,9 @@ import java.util.List;
 public class ClientProxy extends CommonProxy {
     public static List<GenericRailTransport> carts = new ArrayList<GenericRailTransport>();
 
+    public static double[][] devSplineModification = {{0,0,0},{0,0,0},{0,0,0},{0,0,0}};
+    public static int devSplineCurrentPoint=0;
+
     /*
      * <h3>keybinds</h3>
      * Initialize the default values for keybinds.
@@ -60,6 +64,10 @@ public class ClientProxy extends CommonProxy {
     public static boolean EnableAnimations = true;
     /**whether or not to use the 3D rails*/
     public static boolean Enable3DRails = true;
+    /**whether or not to use HD skins*/
+    public static boolean useHDSkins = false;
+    /**whether or not to force texture binding*/
+    public static boolean ForceTextureBinding = false;
     /**defines if the inventory graphics should be loaded from a TiM URI or if vanilla graphics should be used*/
     public static boolean useVanillaInventoryTextures = true;
     /**the keybind for the lamp toggle*/
@@ -68,12 +76,21 @@ public class ClientProxy extends CommonProxy {
     public static KeyBinding KeyHorn = new KeyBinding("Use Horn/Whistle", Keyboard.KEY_H, "Trains in Motion");
     /**the keybind for opening the inventory*/
     public static KeyBinding KeyInventory = new KeyBinding("Open Train/rollingstock GUI",  Keyboard.KEY_I, "Trains in Motion");
-    /**the keybind for acceleration*/
-    public static KeyBinding KeyAccelerate = new KeyBinding("Train Acceleration", Keyboard.KEY_U, "Trains in Motion");
-    /**the keybind for deceleration/reverse*/
-    public static KeyBinding KeyReverse = new KeyBinding("Train Deceleration/Reverse", Keyboard.KEY_J, "Trains in Motion");
-    /**the keybind for deceleration/reverse*/
-    public static KeyBinding KeyBrake = new KeyBinding("Train Brake", Keyboard.KEY_SPACE, "Trains in Motion");
+    /**the value for rail detail*/
+    public static int railLoD = 8;
+    /**the skin to use for the rail*/
+    public static int railSkin = 2;
+
+    public static KeyBinding raildevtoolUp = new KeyBinding("Move Point Z+", Keyboard.KEY_UP, "Trains in Motion Dev");
+    public static KeyBinding raildevtoolDown = new KeyBinding("Move Point Z-", Keyboard.KEY_DOWN, "Trains in Motion Dev");
+    public static KeyBinding raildevtoolLeft = new KeyBinding("Move Point X+", Keyboard.KEY_LEFT, "Trains in Motion Dev");
+    public static KeyBinding raildevtoolRight = new KeyBinding("Move Point X-", Keyboard.KEY_RIGHT, "Trains in Motion Dev");
+    public static KeyBinding raildevtoolRaise = new KeyBinding("Move Point Y+", Keyboard.KEY_PRIOR, "Trains in Motion Dev");
+    public static KeyBinding raildevtoolLower = new KeyBinding("Move Point Y-", Keyboard.KEY_NEXT, "Trains in Motion Dev");
+
+    public static KeyBinding raildevtoolNextPoint = new KeyBinding("Next Point", Keyboard.KEY_ADD, "Trains in Motion Dev");
+    public static KeyBinding raildevtoolLastPoint = new KeyBinding("Previous Point", Keyboard.KEY_SUBTRACT, "Trains in Motion Dev");
+
 
     /**
      * <h2> Client GUI Redirect </h2>
@@ -90,7 +107,7 @@ public class ClientProxy extends CommonProxy {
     public Object getClientGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
         if (player != null) {
             //Trains
-            if (player.worldObj.getEntityByID(ID) instanceof GenericRailTransport) {
+            if (player.worldObj.getEntityByID(ID) instanceof GenericRailTransport && !((GenericRailTransport) player.worldObj.getEntityByID(ID)).hasCustomGUI()) {
                 return new GUITransport(player.inventory, (GenericRailTransport) player.worldObj.getEntityByID(ID));
                 //tile entities
             } else if (player.worldObj.getTileEntity(x,y,z) instanceof TileEntityStorage) {
@@ -98,6 +115,18 @@ public class ClientProxy extends CommonProxy {
             }
         }
         return null;
+    }
+
+    @Override
+    public void adminGui(String datacsv){
+        Minecraft.getMinecraft().displayGuiScreen(new GUIAdminBook(datacsv));
+    };
+
+    @Override
+    public boolean isClient(){return true;}
+
+    public int getRailLoD(){
+        return 3;
     }
 
     /**
@@ -117,15 +146,25 @@ public class ClientProxy extends CommonProxy {
         Enable3DRails = config.get("Quality (Client only)", "Enable3DRails", false).getBoolean(false);
         config.addCustomCategoryComment("Quality (Client only)", "Overrides the render of train and rollingstock inventories to use textures from vanilla (including resourcepacks), so you can use textures in a texturepack specifically for this mod");
         useVanillaInventoryTextures = config.get("Quality (Client only)", "UseVanillaInventoryTextures", true).getBoolean(true);
+        config.addCustomCategoryComment("Quality (Client only)", "Overrides the render of train and rollingstock inventories to use textures from vanilla (including resourcepacks), so you can use textures in a texturepack specifically for this mod");
+        useVanillaInventoryTextures = config.get("Quality (Client only)", "UseVanillaInventoryTextures", true).getBoolean(true);
+        config.addCustomCategoryComment("Quality (Client only)", "Forces textures to be bound, slows performance on some machines, speeds it up on others, and fixes a rare bug where the the texture does not get bound. So... This REALLY depends on your machine, see what works best for you.");
+        ForceTextureBinding = config.get("Quality (Client only)", "ForceTextureBinding", false).getBoolean(false);
+        config.addCustomCategoryComment("Quality (Client only)", "Defines the number of segments per block of rail, higher numbers will make smoother models, but lower numbers get better FPS. Minimum: 4");
+        railLoD = config.get("Quality (Client only)", "RailLoD", 8).getInt(8);
+        if (railLoD<4){
+            railLoD=4;
+        }
+
+        config.addCustomCategoryComment("Quality (Client only)", "Defines the skin to use. 0: flat 2D rail similar to vanilla. 1: basic 3D rail. 2: Normal 3D rail. 3: High detail 3D rail");
+        railLoD = config.get("Quality (Client only)", "railSkin", 2).getInt(2);
+
 
         config.addCustomCategoryComment("Keybinds (Client only)", "accepted values can be set from in-game, or defined using the key code values from: http://minecraft.gamepedia.com/Key_codes");
 
         KeyLamp.setKeyCode(config.getInt("LampKeybind", "Keybinds (Client only)", Keyboard.KEY_L, 0, 0, ""));
         KeyLamp.setKeyCode(config.getInt("HornKeybind", "Keybinds (Client only)", Keyboard.KEY_H, 0, 0, ""));
         KeyInventory.setKeyCode(config.getInt("InventoryKeybind", "Keybinds (Client only)", Keyboard.KEY_I, 0, 0, ""));
-        KeyAccelerate.setKeyCode(config.getInt("AccelerateKeybind", "Keybinds (Client only)", Keyboard.KEY_U, 0, 0, ""));
-        KeyReverse.setKeyCode(config.getInt("ReverseKeybind", "Keybinds (Client only)", Keyboard.KEY_J, 0, 0, ""));
-        KeyBrake.setKeyCode(config.getInt("BrakeKeybind", "Keybinds (Client only)", Keyboard.KEY_SPACE, 0, 0, ""));
     }
 
     /**the client only lamp block*/
@@ -163,8 +202,8 @@ public class ClientProxy extends CommonProxy {
 
 
 
-        //GameRegistry.registerBlock(new BlockRailOverride(), Item);
-        ClientRegistry.bindTileEntitySpecialRenderer(BlockRailOverride.renderTileEntity.class, specialRenderer);
+        //GameRegistry.registerBlock(new BlockRailCore(), Item);
+        ClientRegistry.bindTileEntitySpecialRenderer(RailTileEntity.class, specialRenderer);
 
 
 
@@ -172,9 +211,18 @@ public class ClientProxy extends CommonProxy {
         //keybinds
         ClientRegistry.registerKeyBinding(KeyLamp);
         ClientRegistry.registerKeyBinding(KeyInventory);
-        ClientRegistry.registerKeyBinding(KeyAccelerate);
-        ClientRegistry.registerKeyBinding(KeyReverse);
-        ClientRegistry.registerKeyBinding(KeyBrake);
+
+        ClientRegistry.registerKeyBinding(raildevtoolUp);
+        ClientRegistry.registerKeyBinding(raildevtoolDown);
+        ClientRegistry.registerKeyBinding(raildevtoolLeft);
+        ClientRegistry.registerKeyBinding(raildevtoolRight);
+        ClientRegistry.registerKeyBinding(raildevtoolRaise);
+        ClientRegistry.registerKeyBinding(raildevtoolLower);
+        ClientRegistry.registerKeyBinding(raildevtoolNextPoint);
+        ClientRegistry.registerKeyBinding(raildevtoolLastPoint);
+
+
+
 
         //register the transport HUD.
         HUDTrain hud = new HUDTrain();
@@ -187,7 +235,7 @@ public class ClientProxy extends CommonProxy {
         @Override
         public void renderTileEntityAt(TileEntity tileEntity, double x, double y, double z, float p_147500_8_) {
             GL11.glPushMatrix();
-            GL11.glTranslated(x+0.5,y+0.325, z+0.5);
+            GL11.glTranslated(x,y, z);
             tileEntity.func_145828_a(null);
             GL11.glPopMatrix();
         }

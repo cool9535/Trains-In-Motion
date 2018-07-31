@@ -3,14 +3,15 @@ package ebf.tim.utility;
 
 import ebf.tim.entities.EntityBogie;
 import ebf.tim.entities.GenericRailTransport;
-import net.minecraft.block.Block;
 import net.minecraft.block.BlockRailBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.MathHelper;
+import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraftforge.oredict.OreDictionary;
+import fexcraft.tmt.slim.Vec3d;
 import zoranodensha.api.structures.tracks.ITrackBase;
 
 import java.util.*;
@@ -27,6 +28,7 @@ public class RailUtility {
     public static final float radianF = (float) Math.PI / 180.0f;
     /**converts a radians double to degrees*/
     public static final double degreesD = 180.0d / Math.PI;
+    public static final float degreesF = (float) (180.0d / Math.PI);
 
 
     /**
@@ -38,6 +40,65 @@ public class RailUtility {
         return (world.getTileEntity(x, y, z) instanceof ITrackBase || world.getBlock(x, y, z) instanceof BlockRailBase);
     }
 
+
+
+    public static String translate(String text){
+        if (StatCollector.translateToLocal(text).equals(text)){
+            DebugUtil.println("Missing lang entry for: " +text);
+            return text;
+        } else {
+            return StatCollector.translateToLocal(text);
+        }
+    }
+
+
+    /**
+     * replacement for system atan2 function.
+     * uses a lookup list of 1024 float entries (4kb roughly).
+     * performance is measured at over 15 times more efficient.
+     * @param x
+     * @param z
+     * @return angle in radians
+     */
+    public static float atan2f(double x, double z) {
+        float pi =-3.141592653f;
+        float multiplier = 1.0f;
+
+        if (z < 0.0d) {
+            if (x < 0.0d) {
+                z = -z;
+                x = -x;
+            } else {
+                z = -z;
+                multiplier = -1.0f;
+            }
+
+        } else {
+            if (x < 0.0d) {
+                x = -x;
+                multiplier = -1.0f;
+            }
+
+            pi = 0.0f;
+        }
+
+        double invDiv = 1.0D / (((z < x) ? x : z) * (1.0D / (ATAN2_SQRT - 1)));
+        return (atan2[(int)(x * invDiv) * ATAN2_SQRT + (int)(z * invDiv)] + pi) * multiplier;
+    }
+
+    public static float atan2degreesf(double x, double y){
+        return atan2f(x,y)*57.295779514f;
+    }
+
+    private static final int ATAN2_SQRT = (int) Math.sqrt(1024);
+    private static final float[] atan2 = new float[1024];
+    static {
+        for (int i = 0; i < ATAN2_SQRT; i++) {
+            for (int j = 0; j < ATAN2_SQRT; j++) {
+                atan2[j * ATAN2_SQRT + i] = (float) Math.atan2((float) j / ATAN2_SQRT, (float) i / ATAN2_SQRT);
+            }
+        }
+    }
 
 
     /**
@@ -81,6 +142,58 @@ public class RailUtility {
         return xyz;
     }
 
+    public static Vec3d rotatePoint(Vec3d f, float pitch, float yaw, float roll) {
+        double cos;
+        double sin;
+        Vec3d xyz = f;
+        //rotate pitch
+        if (pitch != 0.0F) {
+            pitch *= radianF;
+            cos = Math.cos(pitch);
+            sin = Math.sin(pitch);
+
+            xyz.xCoord = (f.yCoord * sin) + (f.xCoord * cos);
+            xyz.yCoord = (f.yCoord * cos) - (f.xCoord * sin);
+        }
+        //rotate yaw
+        if (yaw != 0.0F) {
+            yaw *= radianF;
+            cos = MathHelper.cos(yaw);
+            sin = MathHelper.sin(yaw);
+
+            xyz.xCoord = (f.xCoord * cos) - (f.zCoord * sin);
+            xyz.zCoord = (f.xCoord * sin) + (f.zCoord * cos);
+        }
+        //rotate roll
+        if (roll != 0.0F) {
+            roll *=  radianF;
+            cos = MathHelper.cos(roll);
+            sin = MathHelper.sin(roll);
+
+            xyz.yCoord = (f.zCoord * cos) - (f.yCoord * sin);
+            xyz.zCoord = (f.zCoord * sin) + (f.yCoord * cos);
+        }
+
+        return xyz;
+    }
+
+    public static Vec3d rotateDistance(double distance, float pitch, float yaw) {
+        Vec3d xyz = new Vec3d(distance, 0,0);
+        //rotate pitch
+        if (pitch != 0.0F) {
+            pitch *= radianF;
+            xyz.xCoord = distance * Math.cos(pitch);
+            xyz.yCoord = distance * Math.sin(pitch);
+        }
+        //rotate yaw
+        if (yaw != 0.0F) {
+            yaw *= radianF;
+            xyz.xCoord = (distance * MathHelper.cos(yaw));
+            xyz.zCoord = (distance * MathHelper.sin(yaw));
+        }
+        return xyz;
+    }
+
 
     /**
      * <h2>rail placement from item</h2>
@@ -97,8 +210,8 @@ public class RailUtility {
                 //check player direction
                 if (playerMeta == 3) {
                     //check if the transport can be placed in the area
-                    if (!RailUtility.isRailBlockAt(worldObj, posX + MathHelper.floor_double(entity.getLengthFromCenter()+ 1.0D ), posY, posZ)
-                            && !RailUtility.isRailBlockAt(worldObj, posX + MathHelper.floor_double((-entity.getLengthFromCenter())- 1.0D ), posY, posZ)) {
+                    if (!RailUtility.isRailBlockAt(worldObj, posX + MathHelper.floor_double(entity.bogieLengthFromCenter()+ 1.0D ), posY, posZ)
+                            && !RailUtility.isRailBlockAt(worldObj, posX + MathHelper.floor_double((-entity.bogieLengthFromCenter())- 1.0D ), posY, posZ)) {
                         playerEntity.addChatMessage(new ChatComponentText("Place on a straight piece of track that is of sufficient length"));
                         return false;
                     }
@@ -111,8 +224,8 @@ public class RailUtility {
                 //same as above, but reverse direction.
                 else if (playerMeta == 1) {
 
-                    if (!RailUtility.isRailBlockAt(worldObj, posX - MathHelper.floor_double(entity.getLengthFromCenter()+ 1.0D ), posY, posZ)
-                            && !RailUtility.isRailBlockAt(worldObj, posX - MathHelper.floor_double((-entity.getLengthFromCenter())- 1.0D ), posY, posZ)) {
+                    if (!RailUtility.isRailBlockAt(worldObj, posX - MathHelper.floor_double(entity.bogieLengthFromCenter()+ 1.0D ), posY, posZ)
+                            && !RailUtility.isRailBlockAt(worldObj, posX - MathHelper.floor_double((-entity.bogieLengthFromCenter())- 1.0D ), posY, posZ)) {
                         playerEntity.addChatMessage(new ChatComponentText("Place on a straight piece of track that is of sufficient length"));
                         return false;
                     }
@@ -127,8 +240,8 @@ public class RailUtility {
 
                 if (playerMeta == 0) {
 
-                    if (!RailUtility.isRailBlockAt(worldObj, posX, posY, posZ + MathHelper.floor_double(entity.getLengthFromCenter()+ 1.0D ))
-                            && !RailUtility.isRailBlockAt(worldObj, posX, posY, posZ + MathHelper.floor_double((-entity.getLengthFromCenter())- 1.0D ))) {
+                    if (!RailUtility.isRailBlockAt(worldObj, posX, posY, posZ + MathHelper.floor_double(entity.bogieLengthFromCenter()+ 1.0D ))
+                            && !RailUtility.isRailBlockAt(worldObj, posX, posY, posZ + MathHelper.floor_double((-entity.bogieLengthFromCenter())- 1.0D ))) {
                         playerEntity.addChatMessage(new ChatComponentText("Place on a straight piece of track that is of sufficient length"));
                         return false;
                     }
@@ -139,8 +252,8 @@ public class RailUtility {
                 }
                 else if (playerMeta == 2) {
 
-                    if (!RailUtility.isRailBlockAt(worldObj, posX, posY, posZ - MathHelper.floor_double(entity.getLengthFromCenter()+ 1.0D ))
-                            && !RailUtility.isRailBlockAt(worldObj, posX, posY, posZ - MathHelper.floor_double((-entity.getLengthFromCenter())- 1.0D ))) {
+                    if (!RailUtility.isRailBlockAt(worldObj, posX, posY, posZ - MathHelper.floor_double(entity.bogieLengthFromCenter()+ 1.0D ))
+                            && !RailUtility.isRailBlockAt(worldObj, posX, posY, posZ - MathHelper.floor_double((-entity.bogieLengthFromCenter())- 1.0D ))) {
                         playerEntity.addChatMessage(new ChatComponentText("Place on a straight piece of track that is of sufficient length"));
                         return false;
                     }
@@ -200,43 +313,5 @@ public class RailUtility {
         }
         return OREDICT_COAL.contains(i.getUnlocalizedName());
     }
-	/**
-	 * @author Herman Tulleken - http://devmag.org.za/2011/04/05/bzier-curves-a-tutorial/
-	 * @param p1 - Point 1 in bezier curve
-	 * @param p2 - Point 2 in curve
-	 * @param p3 - point 3 in curve
-	 * @param SegmentCount - How many segments do you want in the curve
-	 * @return
-	 */
-	public static List<double[]> CalculateBezierCurve(double[] p1, double[] p2, double[] p3, double SegmentCount){
-		
-		List<double[]> Positions = new ArrayList<double[]>();
-		
-		for(double i = 0; i < SegmentCount; i++) {
-			double Segment = i / SegmentCount;
-			
-			double Identifier = 1 - Segment;
-			double TSquare = Segment * Segment;
-			double USquare = Identifier * Identifier;
-			double UCube = Math.pow(Identifier, 3);
-			double TCube = Math.pow(Segment, 3);
-			
-			double[] p = {UCube * p1[0], UCube * p1[1], UCube * p1[2]};
-			p[0] += 3 * USquare * Segment * p1[0];
-			p[1] += 3 * USquare * Segment * p1[1];
-			p[2] += 3 * USquare * Segment * p1[2];
-			
-			p[0] += 3 * Identifier * TSquare * p2[0];
-			p[1] += 3 * Identifier * TSquare * p2[1];
-			p[2] += 3 * Identifier * TSquare * p2[2];
-			
-			p[0] += TCube * Segment * p3[0];
-			p[1] += TCube * Segment * p3[1];
-			p[2] += TCube * Segment * p3[2];
-			
-			Positions.add(p);
-		}
-		return Positions;
-	}
     
 }

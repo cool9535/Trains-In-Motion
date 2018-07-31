@@ -6,13 +6,15 @@ import ebf.tim.entities.trains.EntityBrigadelok080;
 import ebf.tim.items.ItemTransport;
 import ebf.tim.models.Bogie;
 import ebf.tim.models.rollingstock.PullmansPalace;
-import ebf.tim.models.tmt.ModelBase;
-import ebf.tim.models.tmt.Vec3d;
+import fexcraft.tmt.slim.ModelBase;
+import fexcraft.tmt.slim.Vec3d;
 import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -25,7 +27,7 @@ public class EntityPullmansPalace extends RollingstockBase {
     private static final String[] itemDescription = new String[]{
             "\u00A77" + StatCollector.translateToLocal("menu.item.weight") +": 2 " + StatCollector.translateToLocal("menu.item.tons"),
             "\u00A77" + StatCollector.translateToLocal("menu.item.seats") +": 4 " + StatCollector.translateToLocal("menu.item.players")};
-    public static final Item thisItem = new ItemTransport(itemDescription, EntityPullmansPalace.class).setUnlocalizedName("pullmanspalace");
+    public static final Item thisItem = new ItemTransport(new EntityPullmansPalace(null)).setUnlocalizedName("pullmanspalace");
 
     public EntityPullmansPalace(UUID owner, World world, double xPos, double yPos, double zPos) {
         super(owner, world, xPos, yPos, zPos);
@@ -42,12 +44,48 @@ public class EntityPullmansPalace extends RollingstockBase {
      * <h2>Bogie Offset</h2>
      */
     @Override
-    public double getLengthFromCenter(){return 1.7;}
+    public int bogieLengthFromCenter(){return 2;}
+
+    @Override
+    public float getRenderScale() {
+        return 0.0625f;
+    }
+
+    @Override
+    public boolean isReinforced() {
+        return false;
+    }
+
+    @Override
+    public int getTankCapacity() {
+        return 0;
+    }
+
+    @Override
+    public int getRFCapacity() {
+        return 0;
+    }
+
+    @Override
+    public void manageFuel() {
+
+    }
+
+    @Override
+    public float weightKg() {
+        return 1814.3f;
+    }
+
+    @Override
+    public float getMaxFuel() {
+        return 0;
+    }
+
     /**
      * <h2>Inventory Size</h2>
      */
     @Override
-    public TrainsInMotion.inventorySizes getInventorySize(){return TrainsInMotion.inventorySizes.NULL;}
+    public int getInventoryRows(){return 0;}
     /**
      * <h2>Type</h2>
      */
@@ -70,13 +108,28 @@ public class EntityPullmansPalace extends RollingstockBase {
     public Vec3d getLampOffset(){return new Vec3d(0,2,0);}
 
     @Override
+    public float getPistonOffset() {
+        return 0;
+    }
+
+    @Override
+    public float[][] getSmokeOffset() {
+        return null;
+    }
+
+    @Override
     public ResourceLocation getTexture(){return null;} //URIRegistry.MODEL_ROLLINGSTOCK_TEXTURE.getResource("null.png");}
 
     @Override
-    public ModelBase getModel(){return new PullmansPalace();}
+    public List<? extends ModelBase> getModel(){return Collections.singletonList(new PullmansPalace());}
 
     @Override
     public Bogie[] getBogieModels(){return null;}
+
+    @Override
+    public List<Double> getRenderBogieOffsets() {
+        return null;
+    }
 
     /**
      * <h2>pre-asigned values</h2>
