@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8" />
+
+  <!-- credits to https://github.com/pages-themes/tactile for the design and images -->
+<style>
+body {
+    font-size: 15px;
+    font-family: Arial,Arial,Helvetica,sans-serif;
+    line-height: 1.5;
+}
+input[id^="spoiler"]{
+ display: none;
+ text-decoration: none;
+}
+input[id^="spoiler"]:hover{
+ display: none;
+ text-decoration: none;
+}
+
+input[id^="spoiler"] + label {
+  display: block;
+}
+input[id^="spoiler"]:checked + label {
+  color: #333;
+  background: #ccc;
+}
+input[id^="spoiler"] ~ .spoiler {
+  width: 90%;
+  height: 0px;
+  overflow: hidden;
+  opacity: 0;
+  background: #eee;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin:auto;
+  transition: height 1s;
+}
+input[id^="spoiler"]:checked + label + .spoiler{
+  transition-timing-function: linear;
+  height: 80px;
+  opacity: 1;
+}
+input[id^="spoiler5"]:checked + label + .spoiler{
+  height: 520px;
+}
+input[id^="spoiler6"]:checked + label + .spoiler{
+  height:405px;
+}
+input[id^="spoiler7"]:checked + label + .spoiler{
+  height:270px;
+}
+input[id^="spoiler8"]:checked + label + .spoiler{
+  height:340px;
+}
+input[id^="spoiler9"]:checked + label + .spoiler{
+  height:480px;
+}
+.btn {
+  background: #FDFDFD;
+  background-image: linear-gradient(to bottom, #37ADD4, #1B657E);
+  border-radius: 28px;
+  text-shadow: 1px 1px 3px #666666;
+  font-family: Arial;
+  color: #000000;
+  font-size: 21px;
+  padding: 10px 20px 10px 20px;
+  border: solid #000000 1px;
+  text-decoration: none;
+}
+.btn:hover {
+  background: #37ADD4;
+  text-decoration: none;
+}
+.btn img {
+  width:40px;
+  height:40px;
+  margin-bottom: -12px;
+  padding: -8px;
+}
+.octocat{
+	width:55px;
+}
+.container{
+width:680px;
+margin: 0px auto;
+border: 1px solid #2A2A2A;
+background: #DDD url("https://github.com/pages-themes/tactile/images/pattern.png") repeat scroll 0% 0%;
+box-shadow: 0px 0px 5px #B1B1B1;
+}
+.download-bar {
+    background: #222 none repeat scroll 0% 0%;
+    border: 5px solid #444;
+    padding: 10px;
+    margin: 0px -15px 20px;
+    position: relative;
+}
+.download-bar .blc {
+    border-width: 10px;
+    border-style: solid;
+    border-image: none;
+    border-color: transparent transparent #000;
+    width: 0px;
+    height: 0px;
+    display: block;
+    position: absolute;
+    bottom: -14px;
+    left: 0px;
+    transform: rotate(45deg);
+}
+.download-bar .trc {
+    border-width: 10px;
+    border-style: solid;
+    border-image: none;
+    border-color: #000 transparent transparent;
+    width: 0px;
+    height: 0px;
+    display: block;
+    position: absolute;
+    top: -15px;
+    right: 0px;
+    transform: rotate(45deg);
+}
+h1{
+text-align:center;
+}
+h3{
+text-align:center;
+}
+.mainbody{
+background: #F0F0F0 url("https://github.com/EternalBlueFlame/Trains-In-Motion/blob/gh-pages/assets/bright-squares.png?raw=true") repeat scroll 0% 0%;
+margin-top:-20px;
+}
+.banner{
+width:450px;
+margin: auto;
+}
+.banner img{
+display:block; 
+height:150px;
+width:auto;
+margin: 0 auto;
+}
+.status{
+    text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000;
+	text-decoration:bold;
+}
+.stable:after {
+color:#00FF00;
+content: "stable";
+}
+.unstable:after {
+color:#FF0000;
+content: "unstable";
+}
+.build:after {
+color:#00FF00;
+content: "stable";
+}
+.nobuild:after {
+color:#FF0000;
+content: "unstable";
+}
+li .banner {
+margin:0;
+width:auto;
+height:30px;
+-webkit-transition: 0.5s ease;
+transition: 0.5s ease;
+}
+li .banner:hover {
+height:30px;
+margin:0;
+width:auto;
+background:#eee;
+border-bottom: 2px solid black;
+-webkit-transition: 0.5s ease;
+transition: 0.5s ease;
+} 
+.centertext{
+text-align: center;
+}
+
+
+  
+</style></head><body>
+<div class="container">
+          <h1>Trains in Motion</h1>
+          <h3>A train mod for minecraft, inspired by Traincraft and Densha De Go</h3>
+  
+  <div class="download-bar">
+  <table>
+	<tr><td>
+		<input type="checkbox"  id="spoiler1"/> 
+		<label for="spoiler1" class="btn"><img class="octocat" src ="https://github.com/EternalBlueFlame/Trains-In-Motion/blob/gh-pages/assets/octocat-icon.png?raw=true" />View on GitHub</label>
+		<div class="spoiler">
+		  <br/><a class="btn" href="https://github.com/EternalBlueFlame/Trains-In-Motion"> 1.7.10 </a>
+		</div>
+	</td><td>
+		<input type="checkbox"  id="spoiler2"/> 
+		<label for="spoiler2" class="btn">
+			<img src="https://github.com/shlinux/faenza-icon-theme/blob/master/Faenza/mimetypes/64/application-x-jar.png?raw=true" /> Download jar file
+		</label>
+		<div class="spoiler">
+		  <br/><a class="btn" href="https://github.com/EternalBlueFlame/Trains-In-Motion/releases/download/0.2.6.0-Alpha/Trains.in.Motion.0.2.6.Alpha.jar">1.7.10</a>
+		</div>
+	</td></tr><tr><td>
+		<input type="checkbox"  id="spoiler3"/> 
+		<label for="spoiler3" class="btn">
+			<img src="https://github.com/shlinux/faenza-icon-theme/blob/master/Faenza/mimetypes/64/application-x-zip.png?raw=true" /> Download Source zip
+		</label>
+		<div class="spoiler">
+		  <br/><a class="btn" href="https://github.com/EternalBlueFlame/Trains-In-Motion/zipball/master">1.7.10</a>
+		</div>
+	  </td><td>
+		<input type="checkbox"  id="spoiler4"/> 
+		<label for="spoiler4" class="btn">
+			<img src="https://github.com/shlinux/faenza-icon-theme/blob/master/Faenza/mimetypes/64/application-x-tar.png?raw=true" /> Download Source tar
+		</label>
+		<div class="spoiler">
+		  <br/><a class="btn" href="https://github.com/EternalBlueFlame/Trains-In-Motion/tarball/master">1.7.10</a>
+		</div>
+	  </td></tr></table>
+<span class="blc"></span><span class="trc"></span>
+  </div>
+  
+  <div class="mainbody"> 
+  
+  
+  
+	<h1>Join the Discussion</h1>
+  		<input type="checkbox"  id="spoiler5"/> 
+		<label for="spoiler5" class="banner">
+			<img src="https://github.com/EternalBlueFlame/Trains-In-Motion/blob/gh-pages/assets/Discord.png?raw=true" class="banner" />
+		</label>
+		<div class="spoiler">
+		<div class="centertext"><a href="https://discord.gg/0141OcfV1lAvUphgs">Join now</a></div>
+		  <iframe src="https://discordapp.com/widget?id=190640858805174273&theme=dark" width="612" height="500" allowtransparency="false" frameborder="0"></iframe>
+		</div>
+  
+  
+  <h1>Status</h1>
+  Current source: <span class="build status" ></span><br/>
+  Current Release: <span class="unstable status" ></span><br/>
+  Release version:<b> 0.2.6-Alpha</b><br/>
+  Check out our goals on trello: <a href="https://trello.com/b/cqaw1T3R/trains-in-motion">https://trello.com/b/cqaw1T3R/trains-in-motion</a>
+  
+  
+  
+ 
+
+<h1>Contributing</h1>
+<ul><li>
+	<input type="checkbox"  id="spoiler6"/> 
+	<label for="spoiler6" class="banner">
+		<h2 class="hoverline">Models</h2>
+	</label>
+	<div class="spoiler">
+	  <ul>
+		<li> Models must match the Mod's Art-style.</li>
+		<li> "units" may be whatever measurement form you please, models can be scaled up/down to match.</li>
+		<li> Wheel base must be 12 units (the rail width).</li>
+		<li> Chassis must be at least 20 units (so it can fit the player).</li>
+		<li> Length and height must be to scale with the chassis width.</li>
+		<li> Must be a .java model. Supported editors are:</li>
+		<ul>
+			<li> <a href="http://www.minecraft-smp.de/index.php/downloads/category/19-latest-release">SMP Toolbox 2 (preferred)</a>. NOTE: Shapes aren't supported, instead use a Shapebox part type on boxes.</li>
+			<li> <a href="http://www.minecraftforum.net/forums/mapping-and-modding/minecraft-tools/1261320-modeler-fmcmodeler-v0-26-minecraft-models-in-a">FMC Modeler</a></li>
+			<li> Techne (No link is available currently)</li>
+			<li> MCModeler (No link is available currently, also untested)</li>
+		</ul>
+		<li> Parts intended to animate such as wheels and pistons must be centered (for example dimension of 1 would be an offset of -0.5)</li>
+		<li> If the model is not from SMP Toolbox, it must be at least texturemapped, however it is preferred that they be fully textured (see textures)</li>
+		<li> Models must not infringe any forms of copyright (that means no chuggington, Thomas the tank engine, polar express, etc) </li>
+		<li> I will not accept .obj models, yes the render supports them but due to performance issues, I won't use them </li>
+	  </ul>
+	</div>
+	
+	</li><li>
+		<input type="checkbox"  id="spoiler7"/> 
+	<label for="spoiler7" class="banner">
+		<h2 class="hoverline">Textures</h2>
+	</label>
+	<div class="spoiler">
+	  <ul>
+		<li> Textures should be provided in 2 resolutions so they can properly support players of different GPU strengths</li>
+		<ul>
+			<li> 16 times the base resolution (so for example if the model resolution is 512x512, the texture should be 8192x8192). </li>
+			<li> 4 times the base resolution (so for example if the model resolution is 512x512, the texture should be 2048x2048). </li>
+		</ul>
+		<li> Textures must be shaded, the render does not do this for us, and if that feature is ever added it will only be an after-effect. </li>
+		<li> Textures must be built off base colors with known intention that they can and will have hues swapped later on. </li>
+		<li> If the textures are compressed, tell me ahead of time how you did it so I know whether or not to use my own forms of compression. </li>
+	  </ul>
+	</div>
+	
+	</li><li>
+		<input type="checkbox"  id="spoiler8"/> 
+	<label for="spoiler8" class="banner">
+		<h2 class="hoverline">Add-ons</h2>
+	</label>
+	<div class="spoiler">
+	NOTE: the rules for this section are intended only as guidelines, I don't take any responsibility for your add-ons so I don't really care what you do.
+	  <ul>
+		<li> Models should follow the size conventions mentioned before (I assume you want them to fit on the rails, and for the player to fit in the thing)</li>
+		<li> Models should not use shapes unless you make your own render to fix the shape rendering. So you probably still wanna use shapeboxes. </li>
+		<li> You can use the obj render if you want, just remember the entire model has to be cached on load and held on to throuought gameplay. So remember that when someone complains about RAM use. </li>
+		<li> Textures should follow the texture guidelines, if you wanna do different resolutions that's cool but the render treats your stuff the same as mine unless you make your own render. </li>
+		<li> While the resources are already there to allow you to make your own add-on mod to Trains in Motion, I will be making a tutorial for making addons, after the release of 0.2.7 </li>
+	  </ul>
+	</div>
+	
+	
+	</li><li>
+		<input type="checkbox"  id="spoiler9"/> 
+	<label for="spoiler9" class="banner">
+		<h2 class="hoverline">License and terms of use</h2>
+	</label>
+	<div class="spoiler">
+	By using the Trains in Motion mod in compiled or uncompiled format, and, or any of the files contained on https://github.com/EternalBlueFlame/Trains-In-Motion<br/>you inherently agree to the following<br/>
+	From here on, the term "this project" will mean "https://github.com/EternalBlueFlame/Trains-In-Motion"
+	  <ul>
+		<li> The render Turbo Model Thingy (TMT) has it's own license separate from this project.
+		<br/>See <a href="https://github.com/EternalBlueFlame/Trains-In-Motion/blob/master/src/main/java/ebf/tim/models/tmt/ModelRendererTurbo.java#L21">src/main/java/ebf/tim/models/tmt/ModelRendererTurbo.java</a></li>
+		<li> You are allowed to use the compiled mod in your public and private modpacks without permission.</li>
+		<li> Whether directly, indirectly, or otherwise, we are not responsible for any damages to your server, be it in data, userbase, or any other form.</li>
+		<li> You may freely make, share, and earn revenue from videos, pictures, and reviews containing Trains in Motion.</li>
+		<li> Unless you are the creator of the contributed content in question, or have written permission from the creator,
+		<br/>  you may not redistribute anything from this project, including but not limited to models, code, pictures, and sounds.</li>
+		<li> You also agree to the full license found at: 
+		<br/><a href="https://github.com/EternalBlueFlame/Trains-In-Motion/blob/master/TiM-License.md">https://github.com/EternalBlueFlame/Trains-In-Motion/blob/master/TiM-License.md</a></li>
+	  </ul>
+	</div></li>
+	
+	</ul>
+  
+  </div></div>
+
+  </body></html>
