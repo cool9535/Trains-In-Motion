@@ -5,11 +5,13 @@ import com.mojang.authlib.GameProfile;
 import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import ebf.tim.blocks.rails.BlockRailCore;
 import ebf.tim.utility.RailUtility;
 import io.netty.buffer.ByteBuf;
 import mods.railcraft.api.carts.IMinecart;
 import mods.railcraft.api.carts.IRoutableCart;
-import mods.railcraft.api.tracks.*;
+import mods.railcraft.api.tracks.ITrackSwitch;
+import mods.railcraft.api.tracks.ITrackTile;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockAir;
 import net.minecraft.block.BlockRailBase;
@@ -71,6 +73,7 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
 
     public EntityBogie(World world) {
         super(world);
+        yOffset=0.2f;
     }
 
     /**
@@ -85,6 +88,7 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
         posZ = zPos;
         parentId = parent;
         isFront = front;
+        yOffset=0.2f;
     }
 
     /**Small networking check to add the bogie to the host train/rollingstock. Or to remove the bogie from the world if the host doesn't exist.*/
@@ -170,7 +174,7 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
      * @see RailUtility
      * returns true or false depending on whether or not it derails from having no rail.
      */
-    public boolean minecartMove(float yaw, float pitch, boolean isRunning, boolean isTrain, boolean parking,  float weight, boolean isLinked)   {
+    public boolean minecartMove(float yaw, float pitch, boolean hasDrag, boolean parking,  float weight)   {
         //define the yaw from the super
         this.setRotation(yaw, pitch);
 
@@ -216,9 +220,10 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
                     this.cartVelocityZ *= 0.9-(0.01* (weight * 0.0007457));
                 }
             }
+//            DebugUtil.println(parking,cartVelocityX, cartVelocityZ, motionX, motionZ,isRunning,isTrain);
 
             //apply drag
-            if (((!isRunning && isTrain) || !isTrain)){
+            if (hasDrag){
                 if (motionX <0.005 && motionX >-0.005){
                     this.cartVelocityX = motionX =0;
                 } else {
@@ -236,9 +241,10 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
             Block block = worldObj.getBlock(floorX, floorY, floorZ);
             //update on normal rails
             if (block instanceof BlockRailBase) {
-                moveBogie(this.motionX * ((BlockRailBase)block).getRailMaxSpeed(worldObj, this, floorX, floorY, floorZ),
-                        this.motionZ * ((BlockRailBase)block).getRailMaxSpeed(worldObj, this, floorX, floorY, floorZ),
-                        floorX, floorY, floorZ, (BlockRailBase) block, isLinked|| isTrain);
+                this.yOffset=(block instanceof BlockRailCore?0.2f:0.125f);
+                moveBogie(this.motionX * ((BlockRailBase)block).getRailMaxSpeed(worldObj, this, floorY,floorX, floorZ),
+                        this.motionZ * ((BlockRailBase)block).getRailMaxSpeed(worldObj, this, floorY, floorX, floorZ),
+                        floorX, floorY, floorZ, (BlockRailBase) block);
                 //update on ZnD rails, and ones that don't extend block rail base.
             } else if (block instanceof ITrackBase) {
                 //update position for ZnD rails.
@@ -261,7 +267,7 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
      * @param floorZ the floored Z value of the next position.
      * @param block the block at the next position
      */
-    private void moveBogie(double currentMotionX, double currentMotionZ, int floorX, int floorY, int floorZ, BlockRailBase block, boolean train) {
+    private void moveBogie(double currentMotionX, double currentMotionZ, int floorX, int floorY, int floorZ, BlockRailBase block) {
         cachedMotionX = currentMotionX;
         cachedMotionZ = currentMotionZ;
         //define the incrementation of movement, use the cache to store the real value and increment it down, and then throw it to the next loop, then use current for the clamped to calculate movement'
@@ -292,10 +298,10 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
 
         //add the uphill/downhill velocity
         switch (railMetadata){
-            case 2:{if (!train){currentMotionX -= 0.0078125D;} this.posY = (double)(floorY + 1); isOnSlope=true; break;}
-            case 3:{if (!train){currentMotionX += 0.0078125D;} this.posY = (double)(floorY + 1); isOnSlope=true; break;}
-            case 4:{if (!train){currentMotionZ += 0.0078125D;} this.posY = (double)(floorY + 1); isOnSlope=true; break;}
-            case 5:{if (!train){currentMotionZ -= 0.0078125D;} this.posY = (double)(floorY + 1); isOnSlope=true; break;}
+            case 2:{currentMotionX -= 0.0078125D; this.posY = (double)(floorY + 1); isOnSlope=true; break;}
+            case 3:{currentMotionX += 0.0078125D; this.posY = (double)(floorY + 1); isOnSlope=true; break;}
+            case 4:{currentMotionZ += 0.0078125D; this.posY = (double)(floorY + 1); isOnSlope=true; break;}
+            case 5:{currentMotionZ -= 0.0078125D; this.posY = (double)(floorY + 1); isOnSlope=true; break;}
             default:{isOnSlope=false;}
         }
 
@@ -381,7 +387,7 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
         blockNext = this.worldObj.getBlock(floorX, floorY, floorZ);
         //now loop this again for the next increment of movement, if there is one
         if (blockNext instanceof BlockRailBase && (cachedMotionX !=0 || cachedMotionZ !=0)) {
-            moveBogie(cachedMotionX, cachedMotionZ, floorX, floorY, floorZ, (BlockRailBase) blockNext, train);
+            moveBogie(cachedMotionX, cachedMotionZ, floorX, floorY, floorZ, (BlockRailBase) blockNext);
         }
     }
 
@@ -411,7 +417,7 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
         if (stack == null || worldObj.getEntityByID(parentId) == null) {
             return false;
         } else {
-            Item cartItem = ((EntityTrainCore)worldObj.getEntityByID(parentId)).getItem();
+            Item cartItem = ((GenericRailTransport)worldObj.getEntityByID(parentId)).getItem();
             return cartItem != null && stack.getItem() == cartItem;
         }
     }

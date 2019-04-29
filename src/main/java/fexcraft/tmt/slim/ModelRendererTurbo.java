@@ -1,5 +1,7 @@
 package fexcraft.tmt.slim;
 
+import ebf.tim.utility.DebugUtil;
+import fexcraft.fvtm.model.TurboList;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -31,7 +33,7 @@ public class ModelRendererTurbo {
     public int textureOffsetX;
     public int textureOffsetY;
     private boolean compiled;
-    private int displayList;
+    private Integer displayList =null;
     private int displayListArray[];
     private Map<String, TextureGroup> textureGroup;
     private TextureGroup currentTextureGroup;
@@ -70,13 +72,15 @@ public class ModelRendererTurbo {
     public float rotationPointX=0;
     public float rotationPointY=0;
     public float rotationPointZ=0;
-    
+
 	private static final float pi = (float)Math.PI;
 	
 	public ModelRendererTurbo(ModelBase modelbase, String s){
     	flip = false;
         compiled = false;
-        displayList = 0;
+        if(!(modelbase instanceof ModelConverter)) {
+            displayList = 0;
+        }
         mirror = false;
         showModel = true;
         field_1402_i = false;
@@ -93,7 +97,27 @@ public class ModelRendererTurbo {
             modelbase.boxList.add(this);
         }
 	}
-	
+
+    public ModelRendererTurbo(TurboList modelbase, String s){
+        flip = false;
+        compiled = false;
+        mirror = false;
+        showModel = true;
+        field_1402_i = false;
+        vertices = new PositionTransformVertex[0];
+        faces = new TexturedPolygon[0];
+        forcedRecompile = false;
+        textureGroup = new HashMap<String, TextureGroup>();
+        textureGroup.put("0", new TextureGroup());
+        currentTextureGroup = textureGroup.get("0");
+        boxName = s;
+        defaultTexture = "";
+        useLegacyCompiler = true;
+        displayList=0;
+
+    }
+
+
 	public ModelRendererTurbo(ModelBase modelbase){
 		this(modelbase, null);
 	}
@@ -1059,7 +1083,7 @@ public class ModelRendererTurbo {
      * @param textureW
      * @param textureH
      */
-    public void addSphere(float x, float y, float z, float r, int segs, int rings, int textureW, int textureH){
+    public ModelRendererTurbo addSphere(float x, float y, float z, float r, int segs, int rings, int textureW, int textureH){
     	if(segs < 3){
     		segs = 3;
     	}
@@ -1133,6 +1157,7 @@ public class ModelRendererTurbo {
 			currentFace++;
 		}
 		copyTo(tempVerts, poly);
+		return this;
     }
     
     /**
@@ -1144,8 +1169,9 @@ public class ModelRendererTurbo {
      * @param length the length of the cylinder
      * @param segments the amount of segments the cylinder is made of
      */
-    public void addCone(float x, float y, float z, float radius, float length, int segments){
+    public ModelRendererTurbo addCone(float x, float y, float z, float radius, float length, int segments){
     	addCone(x, y, z, radius, length, segments, 1F);
+    	return this;
     }
     
     /**
@@ -1291,7 +1317,7 @@ public class ModelRendererTurbo {
      * @param textureCircleDiameterH the diameter height of the circle on the texture
      * @param textureH the height of the texture of the body
      */
-	public void addCylinder(float x, float y, float z, float radius, float length, int segments, float baseScale, float topScale, int baseDirection, int textureCircleDiameterW, int textureCircleDiameterH, int textureH){
+	public ModelRendererTurbo addCylinder(float x, float y, float z, float radius, float length, int segments, float baseScale, float topScale, int baseDirection, int textureCircleDiameterW, int textureCircleDiameterH, int textureH){
 		boolean dirTop = (baseDirection == MR_TOP || baseDirection == MR_BOTTOM);
 		boolean dirSide = (baseDirection == MR_RIGHT || baseDirection == MR_LEFT);
 		boolean dirFront = (baseDirection == MR_FRONT || baseDirection == MR_BACK);
@@ -1379,6 +1405,7 @@ public class ModelRendererTurbo {
 			}
 		}
 		copyTo(tempVerts, poly);
+		return this;
 	}
     
     /**
@@ -1468,10 +1495,11 @@ public class ModelRendererTurbo {
      * @param y the y-rotation point of the shape
      * @param z the z-rotation point of the shape
      */
-    public void setRotationPoint(float x, float y, float z){
+    public ModelRendererTurbo setRotationPoint(float x, float y, float z){
         rotationPointX = x;
         rotationPointY = y;
         rotationPointZ = z;
+        return this;
     }
     
     /**
@@ -1605,32 +1633,24 @@ public class ModelRendererTurbo {
     }
     
     public void render(){
-    	render(0.0625F, rotorder, true);
+    	render(0.0625F, rotorder);
     }
 
     //Eternal: why was this removed....?
     public void render(float scale){
-        render(scale, rotorder, true);
-    }
-
-    //Eternal: why was this removed....?
-    public void renderNoTexture(float scale){
-        render(scale, rotorder, false);
+        render(scale, rotorder);
     }
 
     /**
      * Renders the shape.
      * @param scale the scale of the shape. Usually is 0.0625.
      */
-    public void render(float scale, boolean flipAxis, boolean isTextured){
-        if(field_1402_i){
+    public void render(float scale, boolean flipAxis){
+        if(field_1402_i || !showModel){
             return;
         }
-        if(!showModel){
-            return;
-        }
-        if(!compiled || forcedRecompile){
-            compileDisplayList(scale, isTextured);
+        if(displayList!=null && (!compiled || forcedRecompile)){
+            compileDisplayList(scale);
         }
         if(rotateAngleX != 0.0F || rotateAngleY != 0.0F || rotateAngleZ != 0.0F){
             GL11.glPushMatrix();
@@ -1654,73 +1674,23 @@ public class ModelRendererTurbo {
             if(rotateAngleX != 0.0F){
                 GL11.glRotatef(rotateAngleX * 57.29578F, 1.0F, 0.0F, 0.0F);
             }
-            callDisplayList();
+            callDisplayList(scale);
             GL11.glPopMatrix();
         } else
         if(rotationPointX != 0.0F || rotationPointY != 0.0F || rotationPointZ != 0.0F){
             GL11.glTranslatef(rotationPointX * scale, rotationPointY * scale, rotationPointZ * scale);
-            callDisplayList();
+            callDisplayList(scale);
             GL11.glTranslatef(-rotationPointX * scale, -rotationPointY * scale, -rotationPointZ * scale);
         }
         else{
-        	callDisplayList();
-        }
-    }
-    
-    public void renderWithRotation(float f){
-        if(field_1402_i){
-            return;
-        }
-        if(!showModel){
-            return;
-        }
-        if(!compiled){
-            compileDisplayList(f, false);
-        }
-        GL11.glPushMatrix();
-        GL11.glTranslatef(rotationPointX * f, rotationPointY * f, rotationPointZ * f);
-        if(rotateAngleY != 0.0F){
-            GL11.glRotatef(rotateAngleY * 57.29578F, 0.0F, 1.0F, 0.0F);
-        }
-        if(rotateAngleX != 0.0F){
-            GL11.glRotatef(rotateAngleX * 57.29578F, 1.0F, 0.0F, 0.0F);
-        }
-        if(rotateAngleZ != 0.0F){
-            GL11.glRotatef(rotateAngleZ * 57.29578F, 0.0F, 0.0F, 1.0F);
-        }
-        callDisplayList();
-        GL11.glPopMatrix();
-    }
-
-    public void postRender(float f){
-        if(field_1402_i){
-            return;
-        }
-        if(!showModel){
-            return;
-        }
-        if(!compiled || forcedRecompile){
-            compileDisplayList(f, false);
-        }
-        if(rotateAngleX != 0.0F || rotateAngleY != 0.0F || rotateAngleZ != 0.0F){
-            GL11.glTranslatef(rotationPointX * f, rotationPointY * f, rotationPointZ * f);
-            if(rotateAngleZ != 0.0F){
-                GL11.glRotatef(rotateAngleZ * 57.29578F, 0.0F, 0.0F, 1.0F);
-            }
-            if(rotateAngleY != 0.0F){
-                GL11.glRotatef(rotateAngleY * 57.29578F, 0.0F, 1.0F, 0.0F);
-            }
-            if(rotateAngleX != 0.0F){
-                GL11.glRotatef(rotateAngleX * 57.29578F, 1.0F, 0.0F, 0.0F);
-            }
-        }
-        else if(rotationPointX != 0.0F || rotationPointY != 0.0F || rotationPointZ != 0.0F){
-            GL11.glTranslatef(rotationPointX * f, rotationPointY * f, rotationPointZ * f);
+        	callDisplayList(scale);
         }
     }
 
-    private void callDisplayList(){
-    	if(useLegacyCompiler){
+    private void callDisplayList(float f){
+        if(displayList==null) {
+            compileDisplayList(f);//for the optimized models we actually gotta do stuff backwards.
+        }else if(useLegacyCompiler){
     		GL11.glCallList(displayList);
     	}
     	else{
@@ -1728,7 +1698,7 @@ public class ModelRendererTurbo {
     		Collection<TextureGroup> textures = textureGroup.values();
     		Iterator<TextureGroup> itr = textures.iterator();
     		for(int i = 0; itr.hasNext(); i++){
-    			TextureGroup curTexGroup = (TextureGroup)itr.next();
+    			TextureGroup curTexGroup = itr.next();
     			curTexGroup.loadTexture();
     			GL11.glCallList(displayListArray[i]);
     			if(!defaultTexture.equals("")){
@@ -1738,35 +1708,46 @@ public class ModelRendererTurbo {
     	}
     }
 
-    private void compileDisplayList(float scale, boolean isTextured){
+    private void compileDisplayList(float scale){
     	if(useLegacyCompiler){
-    		compileLegacyDisplayList(scale, isTextured);
+    		compileLegacyDisplayList(scale);
     	}
     	else{
     		Iterator<TextureGroup> itr = textureGroup.values().iterator();
     		displayListArray = new int[textureGroup.size()];
-            Tessellator tessellator = Tessellator.getInstance();
     		for(int i = 0; itr.hasNext(); i++){
-    			displayListArray[i] = GLAllocation.generateDisplayLists(1);
-    			GL11.glNewList(displayListArray[i], GL11.GL_COMPILE);
-    			TextureGroup usedGroup = itr.next();
-    			for(int j = 0; j < usedGroup.poly.size(); j++){
-    				usedGroup.poly.get(j).draw(tessellator, scale, isTextured);
-    			}
-    			GL11.glEndList();
+    		    if(displayList!=null) {
+                    displayListArray[i] = GLAllocation.generateDisplayLists(1);
+                    GL11.glNewList(displayListArray[i], GL11.GL_COMPILE);
+                    TextureGroup usedGroup = itr.next();
+                    for (int j = 0; j < usedGroup.poly.size(); j++) {
+                        usedGroup.poly.get(j).draw(scale);
+                    }
+                    GL11.glEndList();
+                } else {
+                    TextureGroup usedGroup = itr.next();
+                    for (int j = 0; j < usedGroup.poly.size(); j++) {
+                        usedGroup.poly.get(j).draw(scale);
+                    }
+                }
     		}
     	}
         compiled = true;
     }
     
-    private void compileLegacyDisplayList(float scale, boolean isTextured){
-        displayList = GLAllocation.generateDisplayLists(1);
-        GL11.glNewList(displayList, GL11.GL_COMPILE);
-        Tessellator tessellator = Tessellator.getInstance();
-        for(TexturedPolygon poly : faces){
-            poly.draw(tessellator, scale, isTextured);
+    private void compileLegacyDisplayList(float scale){
+        if(displayList!=null) {
+            displayList = GLAllocation.generateDisplayLists(1);
+            GL11.glNewList(displayList, GL11.GL_COMPILE);
+            for (TexturedPolygon poly : faces) {
+                poly.draw(scale);
+            }
+            GL11.glEndList();
+        } else {
+            for (TexturedPolygon poly : faces) {
+                poly.draw(scale);
+            }
         }
-        GL11.glEndList();
     }
 
     //ETERNAL: changed w/h/d to floats for better support of the custom render on the rails.

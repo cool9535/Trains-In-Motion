@@ -4,14 +4,10 @@ import ebf.tim.TrainsInMotion;
 import ebf.tim.entities.EntityRollingStockCore;
 import ebf.tim.entities.EntityTrainCore;
 import ebf.tim.entities.GenericRailTransport;
-import ebf.tim.models.Bogie;
 import fexcraft.tmt.slim.ModelBase;
-import fexcraft.tmt.slim.Vec3d;
 import net.minecraft.item.Item;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -32,18 +28,10 @@ public abstract class RollingstockBase extends EntityRollingStockCore{
         super(worldObj);
     }
 
-    public abstract ResourceLocation getTexture();
 
     /*if this needs to be changed, then after you change it, have the renderdata.modelList variable set to null so it has to regen the data with the new models*/
-    public abstract List<? extends ModelBase> getModel();
+    public abstract ModelBase[] getModel();
 
-    public abstract Bogie[] getBogieModels();
-
-
-    /**
-     * returns the lengths from center that represent the offset each bogie should render at
-     */
-    public abstract List<Double> getRenderBogieOffsets();
 
     /**
      * returns the type of transport, for a list of options:
@@ -58,13 +46,7 @@ public abstract class RollingstockBase extends EntityRollingStockCore{
      * the second represents height offset in blocks
      * the third value is for the horizontal offset
      */
-    public abstract double[][] getRiderOffsets();
-
-    /**
-     * returns the positions for the hitbox, they are defined by length from center.
-     * must have at least 4 hitboxes, the first and last values are used for coupling positions
-     */
-    public abstract double[][] getHitboxPositions();
+    public abstract float[][] getRiderOffsets();
 
     /**
      * returns the item of the transport, this should be a static value in the transport's class.
@@ -73,15 +55,8 @@ public abstract class RollingstockBase extends EntityRollingStockCore{
 
     /**
      * defines the size of the inventory, not counting any special slots like for fuel.
-     *
-     * @see TrainsInMotion.inventorySizes
      */
     public abstract int getInventoryRows();
-
-    /**
-     * defines the offset for the lamp in X/Y/Z
-     */
-    public abstract Vec3d getLampOffset();
 
     /**
      * defines the radius in microblocks that the pistons animate
@@ -89,14 +64,9 @@ public abstract class RollingstockBase extends EntityRollingStockCore{
     public abstract float getPistonOffset();
 
     /**
-     * defines smoke positions, the outer array defines each new smoke point, the inner arrays define the X/Y/Z
-     */
-    public abstract float[][] getSmokeOffset();
-
-    /**
      * defines the length from center of the transport, thus is used for the motion calculation
      */
-    public abstract int bogieLengthFromCenter();
+    public abstract float[] bogieLengthFromCenter();
 
     /**
      * defines the render scale, minecraft's default is 0.0625
@@ -113,7 +83,7 @@ public abstract class RollingstockBase extends EntityRollingStockCore{
      * Usually value is 10,000 *the cubic meter capacity, so 242 gallons, is 0.9161 cubic meters, which is 9161 tank capacity
      * NOTE if this is used for a train, minimum value should be 1100, which is just a little over a single bucket to allow prevention of overheating.
      */
-    public abstract int getTankCapacity();
+    public abstract int[] getTankCapacity();
 
     /**
      * defines the capacity of the RF storage, intended for electric rollingstock that store power for the train.

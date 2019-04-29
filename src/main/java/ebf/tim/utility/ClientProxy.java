@@ -4,40 +4,40 @@ package ebf.tim.utility;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.TickEvent;
-import cpw.mods.fml.common.registry.GameRegistry;
-import ebf.tim.blocks.RailTileEntity;
-import ebf.tim.blocks.LampBlock;
+import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import ebf.tim.blocks.TileEntityStorage;
 import ebf.tim.entities.EntityBogie;
 import ebf.tim.entities.EntitySeat;
 import ebf.tim.entities.GenericRailTransport;
-import ebf.tim.gui.GUIAdminBook;
-import ebf.tim.gui.GUITrainTable;
-import ebf.tim.gui.GUITransport;
-import ebf.tim.gui.HUDTrain;
+import ebf.tim.gui.*;
+import ebf.tim.items.ItemCraftGuide;
+import ebf.tim.items.ItemRail;
 import ebf.tim.models.RenderEntity;
 import ebf.tim.models.RenderScaledPlayer;
-import ebf.tim.registry.TransportRegistry;
+import ebf.tim.models.rails.ModelBallast;
+import fexcraft.fcl.common.lang.ArrayList;
 import net.minecraft.block.Block;
-import net.minecraft.block.BlockLiquid;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
+import net.minecraftforge.client.IItemRenderer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
+import net.minecraftforge.common.config.Property;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
-import java.util.ArrayList;
+import java.io.File;
 import java.util.List;
 
 /**
@@ -46,30 +46,29 @@ import java.util.List;
  * @author Eternal Blue Flame
  */
 public class ClientProxy extends CommonProxy {
-    public static List<GenericRailTransport> carts = new ArrayList<GenericRailTransport>();
 
     public static double[][] devSplineModification = {{0,0,0},{0,0,0},{0,0,0},{0,0,0}};
     public static int devSplineCurrentPoint=0;
+    /**Instance the event handler, This is used for event based functionality, things like when you right-click an entity.*/
+    public static EventManager eventManager = new EventManager();
 
     /*
      * <h3>keybinds</h3>
      * Initialize the default values for keybinds.
      * Default values courtesy of Ferdinand
      */
-    /**whether or not lights should be enabled*/
-    public static boolean EnableLights = true;
     /**whether or not smoke and steam should be enabled*/
-    public static boolean EnableSmokeAndSteam = true;
+    public static boolean EnableParticles = true;
     /**whether or not animations should be enabled*/
     public static boolean EnableAnimations = true;
-    /**whether or not to use the 3D rails*/
-    public static boolean Enable3DRails = true;
     /**whether or not to use HD skins*/
     public static boolean useHDSkins = false;
     /**whether or not to force texture binding*/
     public static boolean ForceTextureBinding = false;
     /**defines if the inventory graphics should be loaded from a TiM URI or if vanilla graphics should be used*/
     public static boolean useVanillaInventoryTextures = true;
+
+    public static boolean enableTransportTooltip=true;
     /**the keybind for the lamp toggle*/
     public static KeyBinding KeyLamp = new KeyBinding("Lamp Toggle", Keyboard.KEY_L, "Trains in Motion");
     /**the keybind for the horn/whistle*/
@@ -81,16 +80,18 @@ public class ClientProxy extends CommonProxy {
     /**the skin to use for the rail*/
     public static int railSkin = 2;
 
-    public static KeyBinding raildevtoolUp = new KeyBinding("Move Point Z+", Keyboard.KEY_UP, "Trains in Motion Dev");
-    public static KeyBinding raildevtoolDown = new KeyBinding("Move Point Z-", Keyboard.KEY_DOWN, "Trains in Motion Dev");
-    public static KeyBinding raildevtoolLeft = new KeyBinding("Move Point X+", Keyboard.KEY_LEFT, "Trains in Motion Dev");
-    public static KeyBinding raildevtoolRight = new KeyBinding("Move Point X-", Keyboard.KEY_RIGHT, "Trains in Motion Dev");
-    public static KeyBinding raildevtoolRaise = new KeyBinding("Move Point Y+", Keyboard.KEY_PRIOR, "Trains in Motion Dev");
-    public static KeyBinding raildevtoolLower = new KeyBinding("Move Point Y-", Keyboard.KEY_NEXT, "Trains in Motion Dev");
+    public static KeyBinding raildevtoolUp;
+    public static KeyBinding raildevtoolDown;
+    public static KeyBinding raildevtoolLeft;
+    public static KeyBinding raildevtoolRight;
+    public static KeyBinding raildevtoolRaise;
+    public static KeyBinding raildevtoolLower;
 
-    public static KeyBinding raildevtoolNextPoint = new KeyBinding("Next Point", Keyboard.KEY_ADD, "Trains in Motion Dev");
-    public static KeyBinding raildevtoolLastPoint = new KeyBinding("Previous Point", Keyboard.KEY_SUBTRACT, "Trains in Motion Dev");
+    public static KeyBinding raildevtoolNextPoint;
+    public static KeyBinding raildevtoolLastPoint;
 
+
+    private static Configuration wailaConfig=null;
 
     /**
      * <h2> Client GUI Redirect </h2>
@@ -106,6 +107,9 @@ public class ClientProxy extends CommonProxy {
     @Override
     public Object getClientGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
         if (player != null) {
+            if(x==0&&y==0&&z==0&&ID==-1 && player.getHeldItem().getItem() instanceof ItemCraftGuide){
+                return new GUICraftBook();
+            }
             //Trains
             if (player.worldObj.getEntityByID(ID) instanceof GenericRailTransport && !((GenericRailTransport) player.worldObj.getEntityByID(ID)).hasCustomGUI()) {
                 return new GUITransport(player.inventory, (GenericRailTransport) player.worldObj.getEntityByID(ID));
@@ -134,41 +138,69 @@ public class ClientProxy extends CommonProxy {
      * this loads the config values that will only effect client.
      */
     @Override
-    public void loadConfig(Configuration config){
-        super.loadConfig(config);
-        config.addCustomCategoryComment("Quality (Client only)", "Lamps take up a lot of extra processing on client side due to forced chunk reloading");
-        EnableLights = config.get("Quality (Client only)", "EnableLamp", true).getBoolean(true);
-        config.addCustomCategoryComment("Quality (Client only)", "Smoke and steam effects are more lightweight than those of normal minecraft. These shouldn't cause much lag if any, but its client only so if you wanna disable it you can.");
-        EnableSmokeAndSteam = config.get("Quality (Client only)", "EnableSmokeAndSteam", true).getBoolean(true);
-        config.addCustomCategoryComment("Quality (Client only)", "Animations are calculated by vector positioning and rotation every frame. These shouldn't cause much lag if any, but its client only so if you wanna disable it you can.");
-        EnableAnimations = config.get("Quality (Client only)", "EnableAnimations", true).getBoolean(true);
-        config.addCustomCategoryComment("Quality (Client only)", "Overrides the render of vanilla rails to make them use a more detailed 3D render which supports more detailed switches and diagonals.");
-        Enable3DRails = config.get("Quality (Client only)", "Enable3DRails", false).getBoolean(false);
-        config.addCustomCategoryComment("Quality (Client only)", "Overrides the render of train and rollingstock inventories to use textures from vanilla (including resourcepacks), so you can use textures in a texturepack specifically for this mod");
-        useVanillaInventoryTextures = config.get("Quality (Client only)", "UseVanillaInventoryTextures", true).getBoolean(true);
-        config.addCustomCategoryComment("Quality (Client only)", "Overrides the render of train and rollingstock inventories to use textures from vanilla (including resourcepacks), so you can use textures in a texturepack specifically for this mod");
-        useVanillaInventoryTextures = config.get("Quality (Client only)", "UseVanillaInventoryTextures", true).getBoolean(true);
-        config.addCustomCategoryComment("Quality (Client only)", "Forces textures to be bound, slows performance on some machines, speeds it up on others, and fixes a rare bug where the the texture does not get bound. So... This REALLY depends on your machine, see what works best for you.");
-        ForceTextureBinding = config.get("Quality (Client only)", "ForceTextureBinding", false).getBoolean(false);
-        config.addCustomCategoryComment("Quality (Client only)", "Defines the number of segments per block of rail, higher numbers will make smoother models, but lower numbers get better FPS. Minimum: 4");
-        railLoD = config.get("Quality (Client only)", "RailLoD", 8).getInt(8);
-        if (railLoD<4){
-            railLoD=4;
-        }
+    public void loadConfig(FMLPreInitializationEvent event){
+        super.loadConfig(event);
 
-        config.addCustomCategoryComment("Quality (Client only)", "Defines the skin to use. 0: flat 2D rail similar to vanilla. 1: basic 3D rail. 2: Normal 3D rail. 3: High detail 3D rail");
-        railLoD = config.get("Quality (Client only)", "railSkin", 2).getInt(2);
+        Configuration config = new Configuration(event.getSuggestedConfigurationFile());
+        config.load();
+        config.addCustomCategoryComment("Quality (Client only)", "");
+        EnableParticles = config.getBoolean("EnableParticles","Quality (Client only)", true,
+                "Smoke, steam, sparks, and lighting effects are several hundred more lightweight than those of normal minecraft. These shouldn't cause much lag if any, but its client only so if you wanna disable it you can.");
 
+
+        EnableAnimations = config.getBoolean("EnableAnimations","Quality (Client only)", true,
+                "Animations are calculated by vector positioning and rotation every frame. These shouldn't cause much lag if any, but its client only so if you wanna disable it you can.");
+
+        useVanillaInventoryTextures = config.getBoolean("UseVanillaInventoryTextures","Quality (Client only)", true,
+                "Overrides the render of train and rollingstock inventories to use textures from vanilla (including resourcepacks), so you can use textures in a texturepack specifically for this mod");
+
+        useVanillaInventoryTextures = config.getBoolean("UseVanillaInventoryTextures","Quality (Client only)", true,
+                "Overrides the render of train and rollingstock inventories to use textures from vanilla (including resourcepacks), so you can use textures in a texturepack specifically for this mod");
+
+        ForceTextureBinding = config.getBoolean("ForceTextureBinding","Quality (Client only)", false,
+                "Forces textures to be bound, slows performance on some machines, speeds it up on others, and fixes a rare bug where the the texture does not get bound. So... This REALLY depends on your machine, see what works best for you.");
+
+        railLoD = config.getInt("railSkin","Quality (Client only)", 2,0,3,
+                "Defines the skin to use. 0: flat 2D rail similar to vanilla. 1: basic 3D rail similar to an extruded 2D. 2: Normal 3D rail. 3: High detail 3D rail");
+
+        enableTransportTooltip = config.getBoolean("EnableTooltip","Quality (Client only)", true,
+                "Adds a Waila-esk tooltip for trains (Waila is not needed), if Waila is found then their configs will be used.");
 
         config.addCustomCategoryComment("Keybinds (Client only)", "accepted values can be set from in-game, or defined using the key code values from: http://minecraft.gamepedia.com/Key_codes");
 
         KeyLamp.setKeyCode(config.getInt("LampKeybind", "Keybinds (Client only)", Keyboard.KEY_L, 0, 0, ""));
-        KeyLamp.setKeyCode(config.getInt("HornKeybind", "Keybinds (Client only)", Keyboard.KEY_H, 0, 0, ""));
+        KeyHorn.setKeyCode(config.getInt("HornKeybind", "Keybinds (Client only)", Keyboard.KEY_H, 0, 0, ""));
         KeyInventory.setKeyCode(config.getInt("InventoryKeybind", "Keybinds (Client only)", Keyboard.KEY_I, 0, 0, ""));
+
+        config.save();
+
+        File wailaConf = new File(event.getModConfigurationDirectory(), "Waila.cfg");
+
+        if(wailaConf.exists()) {
+            wailaConfig = new Configuration(wailaConf);
+            wailaConfig.load();
+            WAILA_BGCOLOR= wailaConfig.get("general", "waila.cfg.bgcolor",1048592).getInt();
+            WAILA_GRADIENT1= wailaConfig.get("general", "waila.cfg.gradient1",5243135).getInt();
+            WAILA_GRADIENT2= wailaConfig.get("general", "waila.cfg.gradient2",2621567).getInt();
+            WAILA_ALPHA= wailaConfig.get("general", "waila.cfg.alpha",0xEE).getInt();
+            WAILA_FONTCOLOR= wailaConfig.get("general", "waila.cfg.fontcolor",10526880).getInt();
+            WAILA_STATE= WAILA_TOGGLE= wailaConfig.get("general", "waila.cfg.show", false).getBoolean();
+
+        }
+
     }
 
-    /**the client only lamp block*/
-    public static Block lampBlock= new LampBlock();
+    public static int WAILA_BGCOLOR = 1048592,WAILA_GRADIENT1 = 5243135,WAILA_GRADIENT2 = 2621567,WAILA_ALPHA = 0xEE,WAILA_FONTCOLOR=10526880;
+
+    public static boolean WAILA_TOGGLE=false, WAILA_STATE=false;
+
+    public static void toggleWaila(boolean set){
+        if(WAILA_TOGGLE && WAILA_STATE!=set){
+            wailaConfig.getCategory("general").put("waila.cfg.show", new Property("waila.cfg.show", String.valueOf(set), Property.Type.BOOLEAN));
+            wailaConfig.save();
+            WAILA_STATE=set;
+        }
+    }
 
     /**
      * <h2>Client Register</h2>
@@ -177,22 +209,6 @@ public class ClientProxy extends CommonProxy {
     @Override
     public void register() {
         super.register();
-        GameRegistry.registerBlock(lampBlock, "lampblock");
-        lampBlock.setLightLevel(1f);
-
-        //register the fluid icons
-        fluidOil.setIcons(BlockLiquid.getLiquidIcon("water_still"), BlockLiquid.getLiquidIcon("water_flow"));
-
-        //trains and rollingstock
-        int index=0;
-        GenericRailTransport transport = TransportRegistry.listTrains(0);
-        while (transport!=null) {
-            RenderingRegistry.registerEntityRenderingHandler(transport.getClass(), transportRenderer);
-            index++;
-            transport = TransportRegistry.listTrains(index);
-        }
-        //hitboxes
-        RenderingRegistry.registerEntityRenderingHandler(HitboxHandler.MultipartHitbox.class, nullRender);
         //bogies
         RenderingRegistry.registerEntityRenderingHandler(EntityBogie.class, nullRender);
         //seats
@@ -202,24 +218,31 @@ public class ClientProxy extends CommonProxy {
 
 
 
-        //GameRegistry.registerBlock(new BlockRailCore(), Item);
-        ClientRegistry.bindTileEntitySpecialRenderer(RailTileEntity.class, specialRenderer);
-
-
-
-
         //keybinds
         ClientRegistry.registerKeyBinding(KeyLamp);
         ClientRegistry.registerKeyBinding(KeyInventory);
 
-        ClientRegistry.registerKeyBinding(raildevtoolUp);
-        ClientRegistry.registerKeyBinding(raildevtoolDown);
-        ClientRegistry.registerKeyBinding(raildevtoolLeft);
-        ClientRegistry.registerKeyBinding(raildevtoolRight);
-        ClientRegistry.registerKeyBinding(raildevtoolRaise);
-        ClientRegistry.registerKeyBinding(raildevtoolLower);
-        ClientRegistry.registerKeyBinding(raildevtoolNextPoint);
-        ClientRegistry.registerKeyBinding(raildevtoolLastPoint);
+        if(DebugUtil.dev()) {
+            raildevtoolUp = new KeyBinding("Move Point Z+", Keyboard.KEY_UP, "Trains in Motion Dev");
+            raildevtoolDown = new KeyBinding("Move Point Z-", Keyboard.KEY_DOWN, "Trains in Motion Dev");
+            raildevtoolLeft = new KeyBinding("Move Point X+", Keyboard.KEY_LEFT, "Trains in Motion Dev");
+            raildevtoolRight = new KeyBinding("Move Point X-", Keyboard.KEY_RIGHT, "Trains in Motion Dev");
+            raildevtoolRaise = new KeyBinding("Move Point Y+", Keyboard.KEY_PRIOR, "Trains in Motion Dev");
+            raildevtoolLower = new KeyBinding("Move Point Y-", Keyboard.KEY_NEXT, "Trains in Motion Dev");
+
+            raildevtoolNextPoint = new KeyBinding("Next Point", Keyboard.KEY_ADD, "Trains in Motion Dev");
+            raildevtoolLastPoint = new KeyBinding("Previous Point", Keyboard.KEY_SUBTRACT, "Trains in Motion Dev");
+
+
+            ClientRegistry.registerKeyBinding(raildevtoolUp);
+            ClientRegistry.registerKeyBinding(raildevtoolDown);
+            ClientRegistry.registerKeyBinding(raildevtoolLeft);
+            ClientRegistry.registerKeyBinding(raildevtoolRight);
+            ClientRegistry.registerKeyBinding(raildevtoolRaise);
+            ClientRegistry.registerKeyBinding(raildevtoolLower);
+            ClientRegistry.registerKeyBinding(raildevtoolNextPoint);
+            ClientRegistry.registerKeyBinding(raildevtoolLastPoint);
+        }
 
 
 
@@ -230,6 +253,14 @@ public class ClientProxy extends CommonProxy {
         MinecraftForge.EVENT_BUS.register(hud);
 
     }
+
+    @Override
+    public Object getTESR(){return specialRenderer;}
+    @Override
+    public Object getEntityRender(){return transportRenderer;}
+    @Override
+    public Object getNullRender(){return nullRender;}
+
 
     public static final TileEntitySpecialRenderer specialRenderer = new TileEntitySpecialRenderer() {
         @Override
@@ -243,6 +274,26 @@ public class ClientProxy extends CommonProxy {
         @Override
         protected void bindTexture(ResourceLocation p_147499_1_){}
     };
+
+    public class railItemRederer extends ItemRenderer{
+        public railItemRederer(Minecraft p_i1247_1_) {
+            super(p_i1247_1_);
+        }
+        @Override
+        public void renderItem(EntityLivingBase p_78443_1_, ItemStack p_78443_2_, int p_78443_3_, IItemRenderer.ItemRenderType type) {
+            if(p_78443_2_.getItem() instanceof ItemRail){
+                if(p_78443_2_.getTagCompound().hasKey("ballast")){
+                    List<float[]> p = new ArrayList<>();
+                    p.add(new float[]{-0.5f,0f,0f});
+                    p.add(new float[]{0.5f,0f,0f});
+                    ModelBallast.modelPotatoBallast(p,0.5f,-0.5f,
+                            ItemStack.loadItemStackFromNBT(p_78443_2_.getTagCompound().getCompoundTag("ballast")),
+                            1);
+                }
+            }
+
+        }
+    }
 
     private static final RenderEntity transportRenderer = new RenderEntity();
 
@@ -259,28 +310,4 @@ public class ClientProxy extends CommonProxy {
             return null;
         }
     };
-
-    /**
-     * <h2> Forced Dynamic Lighting </h2>
-     *
-     * this is used to force events from the main thread of the mod, it can create a lot of lag sometimes.
-     *
-     * Used to force lighting updates (if enabled in config).
-     * It also only updates if it's actually needed, to help preserve what performance we can because of how much lag this can create.
-     * Because this is a client only method, it creates no overhead on the server.
-     *
-     * @param tick the client tick event from the main thread
-     */
-    @SubscribeEvent
-    public void onTick(TickEvent.ClientTickEvent tick) {
-        if (EnableLights && tick.phase == TickEvent.Phase.END && carts.size() > 0) {
-            if (Minecraft.getMinecraft().theWorld != null) {
-                for (GenericRailTransport cart : carts) {
-                    if (cart != null) {
-                        Minecraft.getMinecraft().theWorld.updateLightByType(EnumSkyBlock.Block, cart.lamp.X, cart.lamp.Y, cart.lamp.Z);
-                    }
-                }
-            }
-        }
-    }
 }

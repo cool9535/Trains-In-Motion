@@ -1,6 +1,5 @@
 package ebf.tim.utility;
 
-import ebf.tim.TrainsInMotion;
 import ebf.tim.entities.EntityTrainCore;
 import ebf.tim.entities.GenericRailTransport;
 import net.minecraft.entity.player.EntityPlayer;
@@ -12,9 +11,7 @@ import org.lwjgl.input.Keyboard;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 /**
  * @author EternalBlueFlame
@@ -27,10 +24,9 @@ public class TransportSlotManager extends net.minecraft.inventory.Container {
 
     //todo: add support for some way to define slot filters
     public void addSlots(ItemStackSlot slot){
-        slot.slotNumber = inventory.size();
         this.inventory.add(slot);
         this.inventorySlots.add(slot);
-        this.inventoryItemStacks.add(null);
+        this.inventoryItemStacks.add(slot.getStack());
     }
 
     /**
@@ -44,49 +40,30 @@ public class TransportSlotManager extends net.minecraft.inventory.Container {
         if (railTransport == null) {
             railTransport = entityTrain;
         }
-
-        if (railTransport.getType() != TrainsInMotion.transportTypes.PASSENGER) {
-            //player toolbar
-            for (int iT = 0; iT < 9; iT++) {
-                addSlots(new ItemStackSlot(iinventory, iT).setCoords( 113 + (iT * 18), 142));
-            }
-            //player inventory
-            for (int ic = 0; ic < 9; ic++) {
-                for (int ir = 0; ir < 3; ir++) {
-                    addSlots(new ItemStackSlot(iinventory, (((ir * 9) + ic) + 9)).setCoords(113 + (ic * 18), 84 + (ir * 18)));
-                }
-            }
+        int s=0;
+        for(ItemStackSlot slot : entityTrain.inventory){
+            s++;
+            addSlots(slot);
         }
-        //cover trains
-        if (entityTrain instanceof EntityTrainCore) {
-            //burnHeat slot
-            //todo: define this in the trains, probably through a generic function call.
-            addSlots(railTransport.inventory.get(0).setCoords(114,32));
+        s=0;
+        //player toolbar
+        for (int iT = 0; iT < 9; iT++) {
+            addSlots(new ItemStackSlot(iinventory, s).setCoords( 113 + (iT * 18), 142));
+            s++;
         }
-
-    //todo: define this in the stock, probably through a generic function call.
-        switch (entityTrain.getType()){
-            case TANKER:{
-                //todo:reposition these so it fits in a menu area above the player inventory
-                addSlots(railTransport.inventory.get(0).setCoords(72, -28));
-                addSlots(railTransport.inventory.get(1).setCoords(152, 46));
-                break;
-            }
-            case STEAM:case NUCLEAR_STEAM:{
-                //todo: define this in the trains, probably through a generic function call.
-                addSlots(railTransport.inventory.get(1).setCoords(150, 32));
-                break;
+        //player inventory
+        for (int ic = 0; ic < 3; ic++) {
+            for (int ir = 0; ir < 9; ir++) {
+                addSlots(new ItemStackSlot(iinventory, s).setCoords(113 + (ir * 18), 84 + (ic * 18)));
+                s++;
             }
         }
 
-        for(ItemStackSlot s : entityTrain.inventory){
-            addSlots(s);
-        }
     }
 
     @Override
     public Slot getSlot(int p_75139_1_) {
-        return p_75139_1_>inventory.size()?null:this.inventory.get(p_75139_1_);
+        return this.inventory.get(p_75139_1_);
     }
 
 
@@ -121,7 +98,7 @@ public class TransportSlotManager extends net.minecraft.inventory.Container {
 
     private ItemStackSlot getSlotByID(int id){
         for(ItemStackSlot slot: inventory){
-            if (slot.getSlotID() ==id){
+            if (slot.getSlotIndex() ==id){
                 return slot;
             }
         }
@@ -131,8 +108,6 @@ public class TransportSlotManager extends net.minecraft.inventory.Container {
     /*a heavily modified replica of the 1.12 version*/
     @Override
     public ItemStack slotClick(int slotId, int dragType, int clickTypeIn, EntityPlayer player) {
-
-        System.out.println("slot " + slotId + " clicked with type "+ dragType +":" +clickTypeIn);
 
         if (clickTypeIn == 4){
             clickTypeIn = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT) ? 1 ://cover shift click
@@ -172,41 +147,75 @@ public class TransportSlotManager extends net.minecraft.inventory.Container {
                 break;
             }
             case 1:{/*ClickType.QUICK_MOVE    aka shift click*/
-                //todo: rework this schenario to better fit in with the new slot numbering systems
                 if (slot == null) {
                     return null;
                 }
 
-                if(railTransport.getType().isTrain() || railTransport.getType().isTanker()){
-                    if(slotId != railTransport.inventory.get(0).getSlotIndex()){
-                        slot.setSlotContents(railTransport.inventory.get(0).mergeStack(slot.getStack()));
-                        if (slot.getStack() == null){return null;}
-                    }
-                    if (slot.getStack()!=null && (railTransport.getType() == TrainsInMotion.transportTypes.STEAM || railTransport.getType() == TrainsInMotion.transportTypes.NUCLEAR_STEAM)
-                            && slotId != railTransport.inventory.get(1).getSlotIndex()){
-                        slot.setSlotContents(railTransport.inventory.get(1).mergeStack(slot.getStack()));
-                        if (slot.getStack() == null){return null;}
-                    }
-                }
+                if(slotId<36 || slotId==-999){//if the selected slot was in player inventory or on the cursor
 
-                //its in player inventory
-                if(slotId>35){
+                    //try the crafting slots
                     for(ItemStackSlot s : inventory){
-                        if(s.getSlotID() == slotId){continue;}
-                        slot.setSlotContents(s.mergeStack(slot.getStack()));
-                        if (slot.getStack() == null){return null;}
+                        if(s.getSlotID()>399){
+                            slot.setSlotContents(s.mergeStack(slot.getStack()));
+                            if (slot.getStack() == null){return null;}
+                        }
                     }
-                } else {//its in train inventory
-                    for(ItemStackSlot s : railTransport.inventory){
-                        if(s.getSlotID() == slotId){continue;}
-                        slot.setSlotContents(s.mergeStack(slot.getStack()));
-                        if (slot.getStack() == null){return null;}
-                    }
+                    //try the storage
                     for(ItemStackSlot s : inventory){
-                        if(s.getSlotID() == slotId){continue;}
-                        slot.setSlotContents(s.mergeStack(slot.getStack()));
-                        if (slot.getStack() == null){return null;}
+                        if(s.getSlotID()>35){
+                            slot.setSlotContents(s.mergeStack(slot.getStack()));
+                            if (slot.getStack() == null){return null;}
+                        }
                     }
+                    //all else fails, go back to the players...
+                    for(ItemStackSlot s : inventory){
+                        if(s.getSlotID()<36){
+                            slot.setSlotContents(s.mergeStack(slot.getStack()));
+                            if (slot.getStack() == null){return null;}
+                        }
+                    }
+
+                } else if(slotId<400){//if the selected slot was in transport inventory
+                    //try the crafting slots
+                    for(ItemStackSlot s : inventory){
+                        if(s.getSlotID()>399){
+                            slot.setSlotContents(s.mergeStack(slot.getStack()));
+                            if (slot.getStack() == null){return null;}
+                        }
+                    }
+
+                    //try the players
+                    for(ItemStackSlot s : inventory){
+                        if(s.getSlotID()<36){
+                            slot.setSlotContents(s.mergeStack(slot.getStack()));
+                            if (slot.getStack() == null){return null;}
+                        }
+                    }
+                    //all else fails, go back to the storage
+                    for(ItemStackSlot s : inventory){
+                        if(s.getSlotID()>35){
+                            slot.setSlotContents(s.mergeStack(slot.getStack()));
+                            if (slot.getStack() == null){return null;}
+                        }
+                    }
+
+                } else {//if the selected slot was in transport fuel/crafting slots
+
+                    //try the players
+                    for(ItemStackSlot s : inventory){
+                        if(s.getSlotID()<36){
+                            slot.setSlotContents(s.mergeStack(slot.getStack()));
+                            if (slot.getStack() == null){return null;}
+                        }
+                    }
+                    //try the storage
+                    for(ItemStackSlot s : inventory){
+                        if(s.getSlotID()>35){
+                            slot.setSlotContents(s.mergeStack(slot.getStack()));
+                            if (slot.getStack() == null){return null;}
+                        }
+                    }
+
                 }
                 break;
             }

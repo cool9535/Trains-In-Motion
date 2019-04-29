@@ -9,24 +9,20 @@ import ebf.tim.entities.EntityTrainCore;
 import ebf.tim.entities.GenericRailTransport;
 import ebf.tim.items.ItemTransport;
 import ebf.tim.models.Bogie;
-import fexcraft.tmt.slim.ModelBase;
-import fexcraft.tmt.slim.Vec3d;
 import ebf.tim.models.trains.Brigadelok_080;
-import ebf.tim.registry.TransportRegistry;
+import ebf.tim.registry.TiMGenericRegistry;
 import ebf.tim.registry.URIRegistry;
-import ebf.tim.utility.ClientProxy;
 import ebf.tim.utility.FuelHandler;
+import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.tileentity.TileEntityFurnace;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.Fluid;
+import net.minecraftforge.fluids.FluidContainerRegistry;
 import net.minecraftforge.fluids.FluidRegistry;
 
-import javax.annotation.Nullable;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,10 +35,10 @@ import java.util.UUID;
 public class EntityBrigadelok080 extends TrainBase {
     /**
      * <h2>Basic Train Constructor</h2>
-     * To make your own custom train or rollingstock, create a new class that is a copy of the train or rollingstock that is closest to what you are adding,
+     * To make your own custom train or rollingstock, create a new class that is a copy of the train or rollingstockShapeBox that is closest to what you are adding,
      *     in that copy, you will need to go through the variables and overrides and change them to match the class/transport.
      * lastly you have to register the class in
-     * @see TransportRegistry#listTrains(int)
+     * @see TiMGenericRegistry#listTrains(int)
      *
      * The fluid tank has 2 values, one for water/RF/fuel/uranium and another for steam, the second one is ONLY used with steam and nuclear steam trains.
      *     The first part is how much fluid it can store, a bucket is worth 1000.
@@ -58,7 +54,7 @@ public class EntityBrigadelok080 extends TrainBase {
      */
 
 
-    public static final Item thisItem = new ItemTransport(new EntityBrigadelok080(null) ).setUnlocalizedName("brigadelok080");
+    public static final Item thisItem = new ItemTransport(new EntityBrigadelok080(null), TrainsInMotion.MODID,TrainsInMotion.creativeTab);
 
     /**
      * these basic constructors only need to have their names changed to that of this class, that is assuming your editor doesn't automatically do that.
@@ -77,27 +73,18 @@ public class EntityBrigadelok080 extends TrainBase {
     @Override
     public String transportcountry(){return "Germany";}
     @Override
-    public int transportYear(){return 1918;}
+    public String transportYear(){return "1918";}
     @Override
-    public String transportEra(){return "Steam";}
-    @Override
-    public float transportTopSpeed(){return 70.81f;}
+    public String transportFuelType(){return "Steam";}
     @Override
     public boolean isFictional(){return false;}
     @Override
     public float transportTractiveEffort(){return 0;}
-    @Override
-    public float transportMetricHorsePower(){return 0;}
 
-
-    @Override
-    public ResourceLocation getDefaultTexture(){
-        return new ResourceLocation(TrainsInMotion.MODID, "textures/sd/train/brigadelok_080.png");
-    }
     @Override
     public void registerSkins(){
-        SkinRegistry.addSkin(this.getClass(),TrainsInMotion.MODID, "textures/sd/train/brigadelok_080.png", null,
-        "default", "The standard design used by Germany in WWI");
+        SkinRegistry.addSkin(this.getClass(),TrainsInMotion.MODID, "textures/sd/train/brigadelok_080.png",
+        "default", "Used by Germany in WWI as a transport for solders and equipment");
     }
 
     /*
@@ -109,18 +96,17 @@ public class EntityBrigadelok080 extends TrainBase {
 
     /**
      * <h2>Max speed</h2>
-     * <h4>TRAINS ONLY.</h4>
      * @return the value of the max speed in km/h
      */
     @Override
-    public float getMaxSpeed(){return 25;}
+    public float transportTopSpeed(){return 70.81f;}
     /**
      * <h2>Bogie Offset</h2>
      * @return the list of offsets for the bogies, 0 being the center. negative values are towards the front of the train.
      * Must always go from front to back. First and last values must always be exact opposites.
      */
     @Override
-    public List<Double> getRenderBogieOffsets(){return  Arrays.asList(-0.75, 0.75);}
+    public List<Double> getRenderBogieOffsets(){return  null;}
     /**
      * <h2>Inventory Size</h2>
      * @return the size of the inventory not counting any fuel or crafting slots, those are defined by the type.
@@ -149,17 +135,37 @@ public class EntityBrigadelok080 extends TrainBase {
      *     Only the first 3 values of each set of floats are actually used.
      */
     @Override
-    public double[][] getRiderOffsets(){return new double[][]{{1.3f,1.2f, 0f}};}
+    public float[][] getRiderOffsets(){return new float[][]{{1.3f,1.2f, 0f}};}
+
+    @Override
+    public float[] getHitboxSize() {
+        return new float[]{3.6f,2.1f,1.3f};
+    }
+
     /**
      * <h2>Acceleration</h2>
      * <h4>TRAINS ONLY.</h4>
-     * @return defines the acceleration that is applied to the train in blocks per second.
+     * @return defines the acceleration.
      */
     @Override
-    public float getHorsePower(){return 75f;}
+    public float transportMetricHorsePower(){return 75f;}
+
+    @Override
+    public String[] additionalItemText() {
+        return null;
+    }
 
     @Override
     public float weightKg(){return 10886.2169f;}
+
+    @Override
+    public ItemStack[] getRecipie() {
+        return new ItemStack[]{
+                null, null, null,
+                null, null, null,
+                null, null, null
+        };
+    }
 
     /**
      * <h2>Hitbox offsets</h2>
@@ -168,16 +174,6 @@ public class EntityBrigadelok080 extends TrainBase {
     @Override
     public double[][] getHitboxPositions(){return new double[][]{{-1.75d,0.25d,0d},{-1.15d,0.25d,0d},{0d,0.25d,0d},{1.15d, 0.25d,0d},{1.75d,0.25d,0d}};}
 
-
-    /**
-     * <h2>Lamp offset</h2>
-     * @return defines the offset for the lamp in blocks.
-     * negative X values are towards the front of the train.
-     * a Y value of less than 2 will register the lamp as null (this is to allow for null lamps, and to prevent from breaking the rails the train is on).
-     *     NOTE: values should never be higher than the hitboxes, or it may not work. (it is managed through a block after all)
-     */
-    @Override
-    public Vec3d getLampOffset(){return new Vec3d(-3.5,2,0);}
     /**
      * <h2>Animation radius</h2>
      * @return defines the radius in microblocks (1/16 of a block) for the piston rotations.
@@ -197,13 +193,28 @@ public class EntityBrigadelok080 extends TrainBase {
     public float[][] getSmokeOffset(){return new float[][]{{-1,0,0.5f,0xB2B2B2,30},{-1,0,-0.5f,0xB2B2B2,30},{-1.4f,2f,0,0x3C3C3C,500}};}
 
     @Override
-    public int bogieLengthFromCenter() {
-        return 1;
+    public float[][] bogieModelOffsets() {
+        return null;
+    }
+
+    @Override
+    public ModelBase[] bogieModels() {
+        return null;
+    }
+
+    @Override
+    public float[] bogieLengthFromCenter() {
+        return new float[]{1, 0.1f};
     }
 
     @Override
     public float getRenderScale() {
         return  0.0625f;
+    }
+
+    @Override
+    public float[][] modelOffsets() {
+        return null;
     }
 
     /**
@@ -227,7 +238,7 @@ public class EntityBrigadelok080 extends TrainBase {
      * <h2>Fluid Tank Capacity</h2>
      */
     @Override
-    public int getTankCapacity(){return 9161;}
+    public int[] getTankCapacity(){return new int[]{9161, 800};}
 
     @Override
     public int getRFCapacity() {
@@ -240,8 +251,26 @@ public class EntityBrigadelok080 extends TrainBase {
      * for instance if you have a wooden tanker car, you can deny fluids that are fire sources (like lava).
      */
     @Override
-    public boolean canFill(@Nullable ForgeDirection from, Fluid resource){
-        return resource== FluidRegistry.WATER && super.canFill(from, resource);
+    public String[] getTankFilters(int tank){
+        switch (tank){
+            case 0:{
+                return new String[]{FluidRegistry.WATER.getName()};
+            }
+            default:{
+                return new String[]{FluidRegistry.LAVA.getName()};
+            }
+        }
+    }
+
+    //todo: maybe make some util functions or something to simplify this stuff?
+    //seems kinda complicated for something that should be the difficulty of a config file.
+    @Override
+    public boolean isItemValidForSlot(int slot, ItemStack stack){
+        switch (slot){
+            case 400:{return TileEntityFurnace.getItemBurnTime(stack)>0;}
+            case 401:{return FluidContainerRegistry.getFluidForFilledItem(stack)!=null && canFill(null, FluidContainerRegistry.getFluidForFilledItem(stack).getFluid());}
+            default:{return true;}
+        }
     }
 
     /**
@@ -262,16 +291,12 @@ public class EntityBrigadelok080 extends TrainBase {
         return thisItem;
     }
 
-    @Override
-    public ResourceLocation getTexture(){
-        return SkinRegistry.getTexture(this.getClass(), this.dataWatcher.getWatchableObjectString(24));
-    }
 
     @Override
     public Bogie[] getBogieModels(){return null;}
 
     @Override
-    public List<? extends ModelBase> getModel(){return Collections.singletonList(new Brigadelok_080());}
+    public ModelBase[] getModel(){return new ModelBase[]{new Brigadelok_080()};}
 
     /**
      * <h2>sets the resource location for sounds, like horn and the sound made for the engine running</h2>
@@ -281,5 +306,5 @@ public class EntityBrigadelok080 extends TrainBase {
     public ResourceLocation getHorn(){return URIRegistry.SOUND_HORN.getResource("h080brigadelok.ogg");}
     @SideOnly(Side.CLIENT)
     @Override
-    public ResourceLocation getRunning(){return URIRegistry.SOUND_RUNNING.getResource("r080brigadelok.ogg");}
+    public ResourceLocation getRunningSound(){return URIRegistry.SOUND_RUNNING.getResource("r080brigadelok.ogg");}
 }

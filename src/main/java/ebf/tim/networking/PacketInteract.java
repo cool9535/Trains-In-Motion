@@ -3,13 +3,8 @@ package ebf.tim.networking;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
-import ebf.tim.TrainsInMotion;
-import ebf.tim.entities.EntitySeat;
 import ebf.tim.entities.GenericRailTransport;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.MathHelper;
 
 /**
  * <h1>Mount packet</h1>
@@ -50,11 +45,8 @@ public class PacketInteract implements IMessage {
         public IMessage onMessage(PacketInteract message, MessageContext context) {
             //First it has to check if it was actually received by the proper entity, because if not, it crashes.
             try {
-                //if (message.key == -1) {
-                    ((GenericRailTransport) context.getServerHandler().playerEntity.worldObj.getEntityByID(message.entityId)).interact(context.getServerHandler().playerEntity, false, false, message.key);
-                //} else {
-                    //((GenericRailTransport) context.getServerHandler().playerEntity.worldObj.getEntityByID(message.entityId)).ProcessPacket(message.key, context.getServerHandler().playerEntity.getEntityId());
-                //}
+                ((GenericRailTransport) context.getServerHandler().playerEntity.worldObj.getEntityByID(message.entityId)).
+                        interact(context.getServerHandler().playerEntity.getEntityId(), false, false, message.key);
 
             } catch (Exception e){
                 System.out.println("Forge must have confused trains with chickens... You should tell Eternal, and send him this entire stacktrace, just to be sure.");

@@ -1,8 +1,11 @@
 package fexcraft.tmt.slim;
 
+import ebf.tim.utility.DebugUtil;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
+
+import static org.lwjgl.opengl.GL11.glGetError;
 
 
 public class TexturedPolygon {
@@ -31,34 +34,27 @@ public class TexturedPolygon {
 	@Deprecated
 	public void setNormals(ArrayList<Vec3f> iNormal){ }
 
-	public void draw(Tessellator tessellator, float f, boolean isTextured){
+	public void draw(float f){
 
 		switch (vertices.length){
 			case 3:{
-				tessellator.startDrawing(GL11.GL_TRIANGLES);
+				Tessellator.getInstance().startDrawing(GL11.GL_TRIANGLES);
 				break;
 			}
 			case 4:{
-				tessellator.startDrawing(GL11.GL_QUADS);
+				Tessellator.getInstance().startDrawing(GL11.GL_QUADS);
 				break;
 			}
 			default:{
-				tessellator.startDrawing(GL11.GL_POLYGON);
+				Tessellator.getInstance().startDrawing(GL11.GL_POLYGON);
 			}
 		}
 
         for (PositionTransformVertex positionTexturevertex : vertices){
-			if (isTextured) {
-				tessellator.addVertexWithUV(positionTexturevertex.vector3F.xCoord * f, positionTexturevertex.vector3F.yCoord * f, positionTexturevertex.vector3F.zCoord * f, positionTexturevertex.textureX, positionTexturevertex.textureY);
-			} else {
-				tessellator.addVertex(positionTexturevertex.vector3F.xCoord * f, positionTexturevertex.vector3F.yCoord * f, positionTexturevertex.vector3F.zCoord * f);
-			}
+        	Tessellator.getInstance().addVertexWithUV(positionTexturevertex.vector3F.xCoord * f, positionTexturevertex.vector3F.yCoord * f, positionTexturevertex.vector3F.zCoord * f, positionTexturevertex.textureX, positionTexturevertex.textureY);
 		}
-		if(!GL11.glGetBoolean(GL11.GL_VERTEX_ARRAY)) {
-			tessellator.draw();
-		} else {
-			tessellator.arrayEnabledDraw();
-		}
+		DebugUtil.printGLError(glGetError());
+		Tessellator.getInstance().arrayEnabledDraw();
     }
 
 
@@ -71,5 +67,5 @@ public class TexturedPolygon {
 
 		this.vertices = apositiontexturevertex;
 	}
-	
+
 }

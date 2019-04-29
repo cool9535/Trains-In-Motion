@@ -1,19 +1,14 @@
 package ebf.tim.utility;
 
 import ebf.tim.entities.GenericRailTransport;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author Eternal Blue Flame
@@ -26,10 +21,14 @@ public class ItemStackSlot extends Slot {
 
     public ItemStackSlot(IInventory host, int slot){
         super(host, slot, 0,0);
+        slotNumber=slot;
+        slotID=slot;
     }
 
     public ItemStackSlot(IInventory host, int slot, int x, int y){
         super(host, slot, 0,0);
+        slotID=slot;
+        slotNumber=slot;
         xDisplayPosition=x;
         yDisplayPosition=y;
     }
@@ -112,6 +111,7 @@ public class ItemStackSlot extends Slot {
                 this.onCrafting(p_75220_1_, i);
             }
         }
+        this.inventory.markDirty();
     }
 
     /*
@@ -130,7 +130,8 @@ public class ItemStackSlot extends Slot {
      */
     @Override
     public boolean isItemValid(ItemStack p_75214_1_) {
-        return !(inventory instanceof GenericRailTransport) || inventory.isItemValidForSlot(getSlotID(), p_75214_1_);
+        if(stack==null || stack.getItem()==null){return true;}
+        return inventory.isItemValidForSlot(getSlotID(), p_75214_1_);
     }
 
     /**
@@ -209,6 +210,7 @@ public class ItemStackSlot extends Slot {
      */
     @Override
     public int getSlotIndex() { return slotNumber; }
+
 
     public int getSlotID(){return slotID;}
 }

@@ -1,20 +1,24 @@
 package ebf.tim.utility;
 
 
-import ebf.tim.entities.EntityBogie;
 import ebf.tim.entities.GenericRailTransport;
+import fexcraft.tmt.slim.Vec3d;
+import fexcraft.tmt.slim.Vec3f;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockRailBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraftforge.oredict.OreDictionary;
-import fexcraft.tmt.slim.Vec3d;
 import zoranodensha.api.structures.tracks.ITrackBase;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * <h1>utilities</h1>
@@ -29,12 +33,12 @@ public class RailUtility {
     /**converts a radians double to degrees*/
     public static final double degreesD = 180.0d / Math.PI;
     public static final float degreesF = (float) (180.0d / Math.PI);
+    private static List<String> loggedLangChecks = new ArrayList<>();
 
 
     /**
      * <h2>Vanilla Track  detection Overrrides</h2>
      * a modified version of vanilla track detection so that way it's more efficient and can support rails from other mods.
-     * @see EntityBogie#moveBogie(double, double, int, int, int, BlockRailBase)
      */
     public static boolean isRailBlockAt(World world, int x, int y, int z) {
         return (world.getTileEntity(x, y, z) instanceof ITrackBase || world.getBlock(x, y, z) instanceof BlockRailBase);
@@ -43,12 +47,22 @@ public class RailUtility {
 
 
     public static String translate(String text){
-        if (StatCollector.translateToLocal(text).equals(text)){
-            DebugUtil.println("Missing lang entry for: " +text);
+        if (StatCollector.translateToLocal(text).equals(text) && !loggedLangChecks.contains(text)){
+            DebugUtil.println("Missing lang entry for: ",text,Thread.currentThread().getStackTrace()[2]);
+            loggedLangChecks.add(text);
             return text;
         } else {
             return StatCollector.translateToLocal(text);
         }
+    }
+
+    public static String[]multiTranslate(String[] s){
+        if(s==null){return null;}
+        String[] ret = new String[s.length];
+        for (int i=0; i<s.length;i++){
+            ret[i]=translate(s[i]);
+        }
+        return ret;
     }
 
 
@@ -101,12 +115,18 @@ public class RailUtility {
     }
 
 
+    public static float power(float base, float power){
+        return (float)Math.pow(base,power);
+    }
+
+
     /**
      * <h3>rotate vector</h3>
      * rotates a given vector based on pitch, yaw, and roll.
      * courtesy of Zora No Densha.
      * There are version for doubles and floats.
      */
+    @Deprecated
     public static double[] rotatePoint(double[] f, float pitch, float yaw, float roll) {
         double cos;
         double sin;
@@ -142,15 +162,52 @@ public class RailUtility {
         return xyz;
     }
 
-    public static Vec3d rotatePoint(Vec3d f, float pitch, float yaw, float roll) {
-        double cos;
-        double sin;
-        Vec3d xyz = f;
+    //private static float cos;
+    //private static float sin;
+    //private static float[] xyz = new float[]{0,0,0};
+    public static float[] rotatePointF(float x, float y, float z, float pitch, float yaw, float roll) {
+        float[] xyz = new float[]{x,y,z};
+        float sin, cos;
         //rotate pitch
         if (pitch != 0.0F) {
             pitch *= radianF;
-            cos = Math.cos(pitch);
-            sin = Math.sin(pitch);
+            cos = MathHelper.cos(pitch);
+            sin = MathHelper.sin(pitch);
+
+            xyz[0] = (y * sin) + (x * cos);
+            xyz[1] = (y * cos) - (x * sin);
+        }
+        //rotate yaw
+        if (yaw != 0.0F) {
+            yaw *= radianF;
+            cos = MathHelper.cos(yaw);
+            sin = MathHelper.sin(yaw);
+
+            xyz[0] = (x * cos) - (z * sin);
+            xyz[2] = (x * sin) + (z * cos);
+        }
+        //rotate roll
+        if (roll != 0.0F) {
+            roll *=  radianF;
+            cos = MathHelper.cos(roll);
+            sin = MathHelper.sin(roll);
+
+            xyz[1] = (z * cos) - (y * sin);
+            xyz[2] = (z * sin) + (y * cos);
+        }
+
+        return xyz;
+    }
+
+    public static Vec3f rotatePoint(Vec3f f, float pitch, float yaw, float roll) {
+        float cos;
+        float sin;
+        Vec3f xyz = new Vec3f(f.xCoord, f.yCoord, f.zCoord);
+        //rotate pitch
+        if (pitch != 0.0F) {
+            pitch *= radianF;
+            cos = MathHelper.cos(pitch);
+            sin = MathHelper.sin(pitch);
 
             xyz.xCoord = (f.yCoord * sin) + (f.xCoord * cos);
             xyz.yCoord = (f.yCoord * cos) - (f.xCoord * sin);
@@ -210,8 +267,8 @@ public class RailUtility {
                 //check player direction
                 if (playerMeta == 3) {
                     //check if the transport can be placed in the area
-                    if (!RailUtility.isRailBlockAt(worldObj, posX + MathHelper.floor_double(entity.bogieLengthFromCenter()+ 1.0D ), posY, posZ)
-                            && !RailUtility.isRailBlockAt(worldObj, posX + MathHelper.floor_double((-entity.bogieLengthFromCenter())- 1.0D ), posY, posZ)) {
+                    if (!RailUtility.isRailBlockAt(worldObj, posX + MathHelper.floor_float(entity.bogieLengthFromCenter()[0]+ 1.0F ), posY, posZ)
+                            && !RailUtility.isRailBlockAt(worldObj, posX + MathHelper.floor_float(entity.bogieLengthFromCenter()[1] - 1.0F ), posY, posZ)) {
                         playerEntity.addChatMessage(new ChatComponentText("Place on a straight piece of track that is of sufficient length"));
                         return false;
                     }
@@ -224,8 +281,8 @@ public class RailUtility {
                 //same as above, but reverse direction.
                 else if (playerMeta == 1) {
 
-                    if (!RailUtility.isRailBlockAt(worldObj, posX - MathHelper.floor_double(entity.bogieLengthFromCenter()+ 1.0D ), posY, posZ)
-                            && !RailUtility.isRailBlockAt(worldObj, posX - MathHelper.floor_double((-entity.bogieLengthFromCenter())- 1.0D ), posY, posZ)) {
+                    if (!RailUtility.isRailBlockAt(worldObj, posX - MathHelper.floor_double(entity.bogieLengthFromCenter()[0]+ 1.0f ), posY, posZ)
+                            && !RailUtility.isRailBlockAt(worldObj, posX - MathHelper.floor_double(entity.bogieLengthFromCenter()[1]- 1.0f ), posY, posZ)) {
                         playerEntity.addChatMessage(new ChatComponentText("Place on a straight piece of track that is of sufficient length"));
                         return false;
                     }
@@ -240,8 +297,8 @@ public class RailUtility {
 
                 if (playerMeta == 0) {
 
-                    if (!RailUtility.isRailBlockAt(worldObj, posX, posY, posZ + MathHelper.floor_double(entity.bogieLengthFromCenter()+ 1.0D ))
-                            && !RailUtility.isRailBlockAt(worldObj, posX, posY, posZ + MathHelper.floor_double((-entity.bogieLengthFromCenter())- 1.0D ))) {
+                    if (!RailUtility.isRailBlockAt(worldObj, posX, posY, posZ + MathHelper.floor_float(entity.bogieLengthFromCenter()[0]+ 1.0f ))
+                            && !RailUtility.isRailBlockAt(worldObj, posX, posY, posZ + MathHelper.floor_float(entity.bogieLengthFromCenter()[1]- 1.0f ))) {
                         playerEntity.addChatMessage(new ChatComponentText("Place on a straight piece of track that is of sufficient length"));
                         return false;
                     }
@@ -252,8 +309,8 @@ public class RailUtility {
                 }
                 else if (playerMeta == 2) {
 
-                    if (!RailUtility.isRailBlockAt(worldObj, posX, posY, posZ - MathHelper.floor_double(entity.bogieLengthFromCenter()+ 1.0D ))
-                            && !RailUtility.isRailBlockAt(worldObj, posX, posY, posZ - MathHelper.floor_double((-entity.bogieLengthFromCenter())- 1.0D ))) {
+                    if (!RailUtility.isRailBlockAt(worldObj, posX, posY, posZ - MathHelper.floor_double(entity.bogieLengthFromCenter()[0]+ 1.0f ))
+                            && !RailUtility.isRailBlockAt(worldObj, posX, posY, posZ - MathHelper.floor_double(entity.bogieLengthFromCenter()[1]- 1.0f ))) {
                         playerEntity.addChatMessage(new ChatComponentText("Place on a straight piece of track that is of sufficient length"));
                         return false;
                     }
@@ -313,5 +370,14 @@ public class RailUtility {
         }
         return OREDICT_COAL.contains(i.getUnlocalizedName());
     }
-    
+
+
+    /*<h1>shorthands for lazy bums</h1>*/
+
+    public static ItemStack DefineStack (Item itm, int size){
+        return new ItemStack(itm, size);
+    }
+    public static ItemStack DefineStack (Block itm, int size){
+        return new ItemStack(Item.getItemFromBlock(itm), size);
+    }
 }

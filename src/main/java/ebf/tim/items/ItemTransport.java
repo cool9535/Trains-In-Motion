@@ -2,12 +2,10 @@ package ebf.tim.items;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import ebf.tim.TrainsInMotion;
 import ebf.tim.entities.GenericRailTransport;
-import ebf.tim.registry.URIRegistry;
 import ebf.tim.utility.DebugUtil;
 import ebf.tim.utility.RailUtility;
-import net.minecraft.client.renderer.texture.IIconRegister;
+import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -29,28 +27,37 @@ public class ItemTransport extends Item {
     private final List<String> subtext = new ArrayList<>();
     /**the class for the entity*/
     private final Class<? extends GenericRailTransport> transport;
-
     /**the main constructor.
      * @param cart the class for the entity*/
-    public ItemTransport(GenericRailTransport cart) {
+    public ItemTransport(GenericRailTransport cart, String MODID, CreativeTabs tabs) {
         super();
-        subtext.add(EnumChatFormatting.GRAY + RailUtility.translate("menu.item.era") +  ": " + RailUtility.translate(cart.transportEra()));
-        subtext.add(EnumChatFormatting.GRAY + RailUtility.translate("menu.item.year") +": " + cart.transportYear());
-        subtext.add(EnumChatFormatting.GRAY + RailUtility.translate("menu.item.country") + ": " + RailUtility.translate(cart.transportcountry()));
-        subtext.add(EnumChatFormatting.GRAY + RailUtility.translate("menu.item.weight") +": " + cart.weightKg() + "kg");
+        setUnlocalizedName(cart.transportName().replace(" ",""));
+        if(cart.transportFuelType()!=null && !cart.transportFuelType().equals("")) {
+            subtext.add(EnumChatFormatting.GRAY + t("menu.item.fueltype") + ": " +
+                    t("menu.item."+cart.transportFuelType().toLowerCase()));
+        }
+        subtext.add(EnumChatFormatting.GRAY + t("menu.item.year") +": " + cart.transportYear());
+        subtext.add(EnumChatFormatting.GRAY + t("menu.item.country") + ": " +
+                t("menu.item."+cart.transportcountry().toLowerCase()));
+        subtext.add(EnumChatFormatting.GRAY + t("menu.item.weight") +": " + cart.weightKg() + "kg");
         if (cart.transportTopSpeed()!=0){
-            subtext.add(EnumChatFormatting.GREEN + RailUtility.translate("menu.item.speed") +": " + cart.transportTopSpeed() +"km");
-            subtext.add(EnumChatFormatting.GREEN + RailUtility.translate("menu.item.pullingpower") +": "+ cart.transportPullingPower() +" " + RailUtility.translate("menu.item.tons"));
+            subtext.add(EnumChatFormatting.GREEN + t("menu.item.speed") +": " + cart.transportTopSpeed() +" km/h");
 
             if (cart.transportMetricHorsePower() !=0){
-                subtext.add(EnumChatFormatting.GREEN +RailUtility.translate("menu.item.mhp") +": " + cart.weightKg());
+                subtext.add(EnumChatFormatting.GREEN +t("menu.item.mhp") +": " + cart.weightKg());
             }
             if (cart.transportTractiveEffort() != 0){
-                subtext.add(EnumChatFormatting.GREEN + RailUtility.translate("menu.item.tractiveeffort") +": " + cart.weightKg() + "lbf");
+                subtext.add(EnumChatFormatting.GREEN + t("menu.item.tractiveeffort") +": " + cart.weightKg() + " lbf");
             }
         }
+        if(cart.getInventoryRows()>0){
+            subtext.add(EnumChatFormatting.GREEN +t("menu.item.isizeof")+ ": " + (cart.getInventoryRows()*9) + " " + t("menu.item.slots"));
+        }
+        if(cart.getRiderOffsets()!=null){
+            subtext.add(EnumChatFormatting.GREEN +t("menu.item.seats")+ ": " + cart.getRiderOffsets().length);
+        }
         if (cart.isFictional()){
-            subtext.add(RailUtility.translate(EnumChatFormatting.BLUE + "menu.item.fictional"));
+            subtext.add(EnumChatFormatting.BLUE +t("menu.item.fictional"));
         }
 
         if (cart.additionalItemText()!=null){
@@ -58,9 +65,9 @@ public class ItemTransport extends Item {
                 subtext.add(EnumChatFormatting.LIGHT_PURPLE  +s);
             }
         }
-        //if we did this anywhere else it would error. why it is fine here I will never know. But I'm gonna abuse that.
-        transport = cart.getClass();
-        setCreativeTab(TrainsInMotion.creativeTab);
+        transport=cart.getClass();
+        setTextureName(MODID+":transports/"+getUnlocalizedName());
+        setCreativeTab(tabs);
     }
 
     /**
@@ -105,14 +112,8 @@ public class ItemTransport extends Item {
         return true;
     }
 
-    /**
-     * <h2>Item icon</h2>
-     * Sets the icon for the item, this re-uses the unlocalized name defined by the class that instanced this.
-     */
-    @Override
-    @SideOnly(Side.CLIENT)
-    public void registerIcons(IIconRegister iconRegister) {
-        this.itemIcon = iconRegister.registerIcon(URIRegistry.ITEM_TRANSPORT_ICON.getResource(this.getUnlocalizedName()).toString());
+    private static String t(String translate){
+        return RailUtility.translate(translate);
     }
 
 }

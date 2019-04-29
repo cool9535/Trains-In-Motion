@@ -1,16 +1,15 @@
 package ebf.tim.models;
 
-import ebf.tim.api.SkinRegistry;
 import ebf.tim.entities.GenericRailTransport;
 import ebf.tim.utility.ClientProxy;
 import ebf.tim.utility.RailUtility;
+import fexcraft.tmt.slim.ModelRendererTurbo;
+import fexcraft.tmt.slim.Tessellator;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.item.ItemStack;
 import org.lwjgl.opengl.GL11;
-import fexcraft.tmt.slim.ModelRendererTurbo;
-import fexcraft.tmt.slim.Tessellator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,16 +49,37 @@ public class GroupedModelRender {
     /**a reference to the geometry we will modify in this sub-class*/
     private List<ModelRendererTurbo> boxRefrence = new ArrayList<ModelRendererTurbo>();
 
+
+    /**
+     *
+     * @param type options:
+     *             0 - renders a block to show cargo
+     *             1 - renders the geometry with texture to show cargo.
+     *             2 - renders a block and stretches the height from 0 to the part height based on percentage of used slots.
+     *             3 - same as 2, but uses the model's geometry and texture.
+     *             4 - livery slot.
+     * @param groupID
+     * @return
+     */
+    public static String groupedPart(int type, int groupID){
+        switch (type){
+            case 1:{return tagRenderModelCargo + groupID;}
+            case 2:{return tagBlockScaleInventory + groupID;}
+            case 3:{return tagScaleInventory + groupID;}
+            case 4:{return tagLivery + groupID;}
+            case 0: default:{return tagRenderBlockCargo + groupID;}
+        }
+    }
+
     /**
      * used to add geometry to the group.
      * @param boxToRender the geometry to add
-     * @param block if the geometry scale should be used to render a block rather than the actual geometry
      * @return returns this instance of GroupedModelRender
      */
-    public GroupedModelRender add(ModelRendererTurbo boxToRender, boolean block, boolean scaled){
+    public GroupedModelRender add(ModelRendererTurbo boxToRender){
         boxRefrence.add(boxToRender);
-        isBlock = block;
-        isScaled = scaled;
+        isBlock = (boxToRender.boxName.contains(tagRenderBlockCargo) || boxToRender.boxName.contains(tagBlockScaleInventory));;
+        isScaled = (boxToRender.boxName.contains(tagScaleInventory) || boxToRender.boxName.contains(tagBlockScaleInventory));
         return this;
     }
 
@@ -71,24 +91,6 @@ public class GroupedModelRender {
     public static boolean canAdd(ModelRendererTurbo modelReference){
         return ClientProxy.EnableAnimations && (modelReference.boxName.contains(tagRenderModelCargo) || modelReference.boxName.contains(tagRenderBlockCargo) ||  modelReference.boxName.contains(tagScaleInventory)
         ||  modelReference.boxName.contains(tagBlockScaleInventory));
-    }
-
-    /**
-     * to add more allowed types extend this function and add more circumstances before calling super.
-     * @param modelReference the geometry to check
-     * @return if the box is supposed to be rendered as a block or as part of the model.
-     */
-    public static boolean isBlock(ModelRendererTurbo modelReference){
-        return (modelReference.boxName.contains(tagRenderBlockCargo) || modelReference.boxName.contains(tagBlockScaleInventory));
-    }
-
-    /**
-     * to add more allowed types extend this function and add more circumstances before calling super.
-     * @param modelReference the geometry to check
-     * @return if the box is supposed to be scaled with the percentage of inventory used.
-     */
-    public static boolean isScaled(ModelRendererTurbo modelReference){
-        return (modelReference.boxName.contains(tagScaleInventory) || modelReference.boxName.contains(tagBlockScaleInventory));
     }
 
     /**
@@ -141,7 +143,7 @@ public class GroupedModelRender {
             GL11.glPopMatrix();
         } else {
             //render the geometry normally if it's not a block.
-            Tessellator.bindTexture(transport.getTexture());
+            Tessellator.bindTexture(transport.getTexture().texture);
             int liveryIndex=-1;
             String lastLivery="";
             for (ModelRendererTurbo block : boxRefrence) {

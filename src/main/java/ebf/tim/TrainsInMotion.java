@@ -4,7 +4,10 @@ import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -12,19 +15,23 @@ import cpw.mods.fml.relauncher.Side;
 import ebf.tim.blocks.OreGen;
 import ebf.tim.entities.EntityBogie;
 import ebf.tim.entities.EntitySeat;
+import ebf.tim.gui.GUICraftBook;
 import ebf.tim.items.ItemAdminBook;
+import ebf.tim.items.ItemCraftGuide;
 import ebf.tim.items.TiMTab;
 import ebf.tim.networking.PacketInteract;
 import ebf.tim.networking.PacketRemove;
-import ebf.tim.registry.TransportRegistry;
+import ebf.tim.registry.TiMGenericRegistry;
 import ebf.tim.utility.ChunkHandler;
 import ebf.tim.utility.ClientProxy;
 import ebf.tim.utility.CommonProxy;
-import ebf.tim.utility.EventManager;
+import ebf.tim.utility.DebugUtil;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
+
+import static sun.security.x509.ReasonFlags.UNUSED;
 
 
 /**
@@ -44,12 +51,10 @@ public class TrainsInMotion {
     /**the ID of the mod and the version displayed in game, as well as used for version check in the version.txt file*/
     public static final String MODID = "trainsinmotion";
     /**the version identifier of the mod*/
-    public static final String MOD_VERSION="0.3 pre-alpha";
+    public static final String MOD_VERSION="0.31 pre-alpha";
     /**an instance of the mod*/
     @Mod.Instance(MODID)
     public static TrainsInMotion instance;
-    /**the creative tab for the mod*/
-    public static CreativeTabs creativeTab = new TiMTab("Trains in Motion");
     /**
      *Setup the proxy, this is used for managing some of the client and server specific features.
      *@see CommonProxy
@@ -58,16 +63,17 @@ public class TrainsInMotion {
     @SidedProxy(clientSide = "ebf.tim.utility.ClientProxy", serverSide = "ebf.tim.utility.CommonProxy")
     public static CommonProxy proxy;
 
+    /**the creative tab for the mod*/
+    public static CreativeTabs creativeTab;
+
     /**instance the network wrapper for the channels.
      * Every wrapper runs on it's own thread, so heavy traffic should go on it's own wrapper, using channels to separate packet types.*/
     public static SimpleNetworkWrapper keyChannel;
 
 
-    /**Instance the event handler, This is used for event based functionality, things like when you right-click an entity.*/
-    private static EventManager eventManager = new EventManager();
-
     /**Instance a new chunk handler, this class manages chunk loading events and functionality.*/
-    private static ChunkHandler chunkHandler = new ChunkHandler();
+    public static ChunkHandler chunkHandler = new ChunkHandler();
+
 
     /**
      * <h3>enums</h3>
@@ -93,11 +99,6 @@ public class TrainsInMotion {
              return this == TANKER || this == LAVATANKER || this == OILCAR || this == FUELTANKER;
          }
     }
-    /**defines the type of block, so that way our generic block classes can change the functionality without needing a bunch of different classes.*/
-    @Deprecated //obsolete in favor of interfaces or type classes
-    public enum blockTypes {
-        CRAFTING, CONTAINER, COSMETIC, SWITCH
-    }
 
     /**
      * <h2>load config</h2>
@@ -107,15 +108,16 @@ public class TrainsInMotion {
     @SuppressWarnings("unused")
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
-        Configuration config = new Configuration(event.getSuggestedConfigurationFile());
 
-        config.load();
-        proxy.loadConfig(config);
-        //settings that effect client and server here.
-        config.save();
+        proxy.loadConfig(event);
         ForgeChunkManager.setForcedChunkLoadingCallback(TrainsInMotion.instance, chunkHandler);
         MinecraftForge.EVENT_BUS.register(chunkHandler);
+        creativeTab=new TiMTab(event.getSide().isClient(),"Trains in Motion", MODID, "TiM");
 
+        ItemCraftGuide.modInfoPages.put(MODID, "Trains in Motion\nCreator/Dev: Eternal Blue Flame\nArtist: Lunar Tales\n"+
+                "\nHonorable mentions\nfor helping development:\nFerdinand, Zora no Densha\ncam27cam, MothershipQ\n" +
+                " \n \n \nA special thanks to everyone\nthat helped support the mod\nthrough donations:\nNightScale5755" +
+        "\n \nAnd a big thanks to\nthe entire Traincraft community\nfor all the patience");
     }
 
     /**
@@ -128,14 +130,20 @@ public class TrainsInMotion {
      * This could be done in pre-init but that would brake compatibility with Dragon API and a number of 3rd party mods.
      */
     @Mod.EventHandler
+    @SuppressWarnings(UNUSED)
     public void init(FMLInitializationEvent event) {
-
-
-
         //loop for registering the entities. the values needed are the class, entity name, entity ID, mod instance, update range, update rate, and if it does velocity things,
         cpw.mods.fml.common.registry.EntityRegistry.registerModEntity(EntityBogie.class, "Bogie", 15, TrainsInMotion.instance, 60, 1, true);
         cpw.mods.fml.common.registry.EntityRegistry.registerModEntity(EntitySeat.class, "Seat", 16, TrainsInMotion.instance, 60, 2, true);
-        TransportRegistry.registerTransports(17);
+
+        if(event.getSide().isClient()){
+            GUICraftBook.infoPages.put(MODID, new String[]{"TRAINS IN MOTION\nBy Eternal Blue Flame\nAdditional credit to Fexcraft", "PAGE 2 OF INfO GARBAGE"});
+        }
+
+        TiMGenericRegistry.registerTransports(event.getSide().isClient(), MODID, TiMGenericRegistry.listSteamTrains(), null);
+        TiMGenericRegistry.registerTransports(event.getSide().isClient(), MODID, TiMGenericRegistry.listFreight(), null);
+        TiMGenericRegistry.registerTransports(event.getSide().isClient(), MODID, TiMGenericRegistry.listPassenger(), null);
+        TiMGenericRegistry.registerTransports(event.getSide().isClient(), MODID, TiMGenericRegistry.listTanker(), null);
 
 
         //register the networking instances and channels
@@ -149,12 +157,22 @@ public class TrainsInMotion {
         proxy.register();
         //register the worldgen
         GameRegistry.registerWorldGenerator(new OreGen(), 0);
-        //register the event handler
-        MinecraftForge.EVENT_BUS.register(eventManager);
-        FMLCommonHandler.instance().bus().register(eventManager);
+        if(event.getSide().isClient()) {
+            //register the event handler
+            MinecraftForge.EVENT_BUS.register(ClientProxy.eventManager);
+            FMLCommonHandler.instance().bus().register(ClientProxy.eventManager);
+            fexcraft.tmt.slim.TextureManager.collectIngotColors();
+        }
+        MinecraftForge.EVENT_BUS.register(CommonProxy.eventManagerServer);
+        FMLCommonHandler.instance().bus().register(CommonProxy.eventManagerServer);
 
         //register GUI, model renders, Keybinds, client only blocks, and HUD
         NetworkRegistry.INSTANCE.registerGuiHandler(instance, proxy);
     }
 
+    @Mod.EventHandler
+    @SuppressWarnings(UNUSED)
+    public void postinit(FMLPostInitializationEvent event) {
+        TiMGenericRegistry.endRegistration();
+    }
 }

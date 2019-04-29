@@ -1,24 +1,23 @@
 package ebf.tim.models;
 
-import ebf.tim.api.SkinRegistry;
 import ebf.tim.entities.GenericRailTransport;
 import ebf.tim.utility.ClientProxy;
 import ebf.tim.utility.RailUtility;
+import fexcraft.tmt.slim.ModelBase;
+import fexcraft.tmt.slim.ModelRendererTurbo;
+import fexcraft.tmt.slim.Tessellator;
+import fexcraft.tmt.slim.TextureManager;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.entity.Render;
+import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
-import fexcraft.tmt.slim.ModelBase;
-import fexcraft.tmt.slim.ModelRendererTurbo;
-import fexcraft.tmt.slim.Tessellator;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import org.lwjgl.opengl.GL20;
 
 /**
  * <h2>Entity Rendering</h2>
@@ -29,6 +28,7 @@ import java.util.Random;
 public class RenderEntity extends Render {
 
     private static final float RailOffset = 0.34f;
+    private static int i=0;
 
     //public RenderEntity() {}
 
@@ -75,72 +75,74 @@ public class RenderEntity extends Render {
      */
     public void doRender(GenericRailTransport entity, double x, double y, double z, float yaw){
 
+        if(entity.frontBogie==null){
+            return;
+        }
+
         if (entity.renderData.modelList == null) {
             entity.renderData = new TransportRenderData();
             entity.renderData.modelList = entity.getModel();
-            entity.renderData.bogieRenders = entity.getBogieModels();
-            if (entity.renderData.bogieRenders != null) {
-                for (Bogie b : entity.renderData.bogieRenders) {
-                    b.rotationYaw = entity.rotationYaw;
-                }
-            }
+            entity.renderData.bogieRenders = Bogie.genBogies(entity.bogieModels(), entity.bogieModelOffsets(), entity.rotationYaw);
 
             //cache animating parts
-            if (ClientProxy.EnableAnimations) {
+            if (ClientProxy.EnableAnimations && entity.renderData.needsModelUpdate) {
                 boolean isAdded;
-                String[] density;
+                float[] density;
                 for (ModelBase part : entity.renderData.modelList) {
                     for (ModelRendererTurbo render : part.boxList) {
                         if (render.boxName ==null){continue;}
                         //attempt to cache the parts for the main transport model
-                        if (StaticModelAnimator.canAdd(render) || entity.isAnimationTag(render.boxName)) {
-                            entity.renderData.animatedPart.add(new StaticModelAnimator(render));
+                        if(render.boxName.toLowerCase().contains("hide") || render.boxName.toLowerCase().contains("cull")){
+                            render.showModel = false;
+                        }
+                        //todo: add some sorta animation registry for users to tie into.
+                        if (entity.customAnimator(render) !=null) {
+                            entity.renderData.animatedPart.add(entity.customAnimator(render));
                         } else if (GroupedModelRender.canAdd(render)) {
                             //if it's a grouped render we have to figure out if we already have a group for this or not.
                             isAdded = false;
                             for (GroupedModelRender cargo : entity.renderData.blockCargoRenders) {
                                 if (cargo.getGroupName().equals(render.boxName)) {
-                                    cargo.add(render, GroupedModelRender.isBlock(render), GroupedModelRender.isScaled(render));
+                                    cargo.add(render);
                                     isAdded = true;
                                     break;
                                 }
                             }
                             if (!isAdded) {
-                                entity.renderData.blockCargoRenders.add(new GroupedModelRender().add(render, GroupedModelRender.isBlock(render), GroupedModelRender.isScaled(render)));
+                                entity.renderData.blockCargoRenders.add(new GroupedModelRender().add(render));
                             }
                             render.showModel = false;
                         }
-                        if(ParticleFX.isParticle(render.boxName)){
-                            density = ParticleFX.parseData(render.boxName);
-                            entity.renderData.particles = ParticleFX.newParticleItterator(Integer.parseInt(density[0].trim())*20,
-                                    Integer.parseInt(density[1].trim(), 16),
-                                    render.rotationPointX*0.0625f, render.rotationPointY*-0.0625f, render.rotationPointZ*0.0625f,
-                                    entity );
+                        if(ParticleFX.parseData(render.boxName)!=null){
+                            entity.renderData.particles.addAll(ParticleFX.newParticleItterator(render.boxName,
+                                    render.rotationPointX, render.rotationPointY, render.rotationPointZ,
+                                    render.rotateAngleX,render.rotateAngleY,render.rotateAngleZ, entity));
                         }
                     }
                 }
                 //cache the animating parts for bogies.
-                if (entity.getBogieModels() != null) {
-                    for (Bogie bogie : entity.getBogieModels()) {
+                if (entity.renderData.bogieRenders != null) {
+                    for (Bogie bogie : entity.renderData.bogieRenders) {
                         for (ModelRendererTurbo box : bogie.bogieModel.boxList) {
-                            entity.renderData.animatedPart.add(new StaticModelAnimator(box));
+                            if(entity.customAnimator(box) !=null) {
+                                entity.renderData.animatedPart.add(entity.customAnimator(box));
+                            }
                         }
                     }
                 }
             }
+            entity.renderData.needsModelUpdate=false;
         }
 
 
 
 
-        GL11.glEnable(GL11.GL_VERTEX_ARRAY);
-        GL11.glEnable(GL11.GL_TEXTURE_COORD_ARRAY);
-        GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glEnable(GL11.GL_BLEND);
 
         GL11.glPushMatrix();
         //set the render position
-        GL11.glTranslated(x, y+ RailOffset + (entity.getRenderScale()-0.0625f)*10, z);
+        GL11.glTranslated(x, y+ RailOffset + ((entity.getRenderScale()-0.0625f)*10)+entity.frontBogie.yOffset, z);
         //rotate the model.
         GL11.glRotatef(-yaw - 180f, 0.0f, 1.0f, 0.0f);
         GL11.glRotatef(entity.rotationPitch - 180f, 0.0f, 0.0f, 1.0f);
@@ -150,23 +152,21 @@ public class RenderEntity extends Render {
          * Be sure animations are enabled in user settings, then check of there is something to animate.
          * if there is, then calculate the vectors and apply the animations
          */
-        if (!Minecraft.getMinecraft().isGamePaused() &&ClientProxy.EnableAnimations && entity.backBogie!=null &&
-                (entity.backBogie.motionX > 0.03 || entity.backBogie.motionX < -0.03 || entity.backBogie.motionZ > 0.03 || entity.backBogie.motionZ < -0.03)) {
+        if (!Minecraft.getMinecraft().isGamePaused() &&ClientProxy.EnableAnimations) {
             if (entity.renderData.wheelPitch >= 6.2831855f || entity.renderData.wheelPitch <=-6.2831855f) {
                 entity.renderData.wheelPitch -= Math.copySign(6.2831855f, entity.renderData.wheelPitch);
             }
             //define the rotation angle, if it's going fast enough.
-            entity.renderData.wheelPitch += ((Math.sqrt(entity.backBogie.motionX * entity.backBogie.motionX) + Math.sqrt(entity.backBogie.motionZ * entity.backBogie.motionZ))*0.08f);
+            entity.renderData.wheelPitch += (((entity.frontVelocityX * entity.frontVelocityX) + (entity.frontVelocityZ * entity.frontVelocityZ))*0.3f);
 
-            entity.renderData.wheelPitch +=0.003;
             if (entity.renderData.wheelPitch != entity.renderData.lastWheelPitch) {
                 entity.renderData.lastWheelPitch =entity.renderData.wheelPitch;
                 //if it's actually moving, then define the new position
 
-                entity.renderData.animationCache[1][0] = entity.getPistonOffset();
+                entity.renderData.animationCache[0][0] = entity.getPistonOffset();
                 //animate the tagged parts
-                for (StaticModelAnimator partToAnimate : entity.renderData.animatedPart) {
-                    partToAnimate.Animate(entity.renderData.wheelPitch, entity.renderData.animationCache[1]);
+                for (AnimationBase partToAnimate : entity.renderData.animatedPart) {
+                    partToAnimate.animate(entity.renderData.wheelPitch, entity.renderData.animationCache[0], entity);
                 }
             }
         }
@@ -179,14 +179,18 @@ public class RenderEntity extends Render {
          * @see net.minecraft.client.renderer.entity.RenderEnderman#renderEquippedItems(EntityEnderman, float)
          */
         //System.out.println(entity.getTexture(0).getResourcePath() + entity.getDataWatcher().getWatchableObjectInt(24));
-        for(ModelBase model : entity.renderData.modelList) {
-            Tessellator.maskColors(entity.getTexture(), null);
-            model.render(null, 0, 0, 0, 0, 0, 0.0625f);
+        TextureManager.adjustLightFixture(entity.worldObj,(int)entity.posX,(int)entity.posY,(int)entity.posZ);
+        TextureManager.maskColors(entity.getTexture().texture, entity.colors);
+        for(i=0; i< entity.renderData.modelList.length;i++) {
+            if(entity.modelOffsets()!=null && entity.modelOffsets().length>i) {
+                GL11.glTranslated(entity.modelOffsets()[i][0],entity.modelOffsets()[i][1],entity.modelOffsets()[i][2]);
+            }
+            entity.renderData.modelList[i].render(null, 0, 0, 0, 0, 0, entity.getRenderScale());
         }
 
 
         //loop for the groups of cargo
-        for (int i = 0; i< entity.renderData.blockCargoRenders.size() && i < entity.calculatePercentageOfSlotsUsed(entity.renderData.blockCargoRenders.size()); i++) {
+        for (i = 0; i< entity.renderData.blockCargoRenders.size() && i < entity.calculatePercentageOfSlotsUsed(entity.renderData.blockCargoRenders.size()); i++) {
             entity.renderData.blockCargoRenders.get(i).doRender(field_147909_c, entity.getFirstBlock(i), this, entity.getRenderScale(), entity);
         }
 
@@ -198,23 +202,50 @@ public class RenderEntity extends Render {
          * this loops for every bogie defined in the registry for the transport, that way we can have different bogies.
          */
         if (entity.renderData.bogieRenders != null && entity.renderData.bogieRenders.length >0){
-            for (int i = 0; i<entity.getRenderBogieOffsets().size(); i++){
-                if (entity.renderData.bogieRenders.length>i && entity.renderData.bogieRenders[i] != null) {
+            if(entity.simpleBogieModelOffsets()!=null){
+                for (i = 0; entity.simpleBogieModelOffsets()!=null && i < entity.simpleBogieModelOffsets().length; i++) {
                     GL11.glPushMatrix();
                     //bind the texture
-                    Tessellator.bindTexture(entity.renderData.bogieRenders[i].bogieTexture);
+                    if (entity.getTexture().getBogieSkin(i) != null) {
+                        Tessellator.bindTexture(entity.getTexture().getBogieSkin(i));
+                    }
                     //set the offset
-                    entity.renderData.animationCache[2][0]=entity.getRenderBogieOffsets().get(i) + Math.copySign((entity.getRenderScale()-0.0625f)*26, entity.getRenderBogieOffsets().get(i));
-                    entity.renderData.animationCache[2][1] = RailOffset;
-                    entity.renderData.animationCache[3] = RailUtility.rotatePoint(entity.renderData.animationCache[2], entity.rotationPitch, entity.rotationYaw,0);
-                    GL11.glTranslated(entity.renderData.animationCache[3][0]+x,entity.renderData.animationCache[3][1]+y, entity.renderData.animationCache[3][2]+z);
-                    entity.renderData.bogieRenders[i].setPositionAndRotation(entity, entity.getRenderBogieOffsets().get(i));
+                    entity.renderData.animationCache[1] = RailUtility.rotatePointF(
+                            entity.simpleBogieModelOffsets()[i],
+                            RailOffset, 0,
+                            entity.rotationPitch, entity.rotationYaw, 0);
+                    GL11.glTranslated(entity.renderData.animationCache[1][0] + x, entity.renderData.animationCache[1][1] + y+entity.frontBogie.yOffset, entity.renderData.animationCache[1][2] + z);
+                    entity.renderData.bogieRenders[i].setRotation(entity);
                     //set the rotation
-                    GL11.glRotatef(-entity.renderData.bogieRenders[i].rotationYaw - 180f,0.0f,1.0f,0);
+                    GL11.glRotatef(-entity.renderData.bogieRenders[i].rotationYaw - 180f, 0.0f, 1.0f, 0);
                     GL11.glRotatef(entity.rotationPitch - 180f, 0.0f, 0.0f, 1.0f);
                     //render the geometry
                     for (ModelRendererTurbo modelBogiePart : entity.renderData.bogieRenders[i].bogieModel.boxList) {
-                            modelBogiePart.render();
+                        modelBogiePart.render();
+                    }
+                    GL11.glPopMatrix();
+                }
+            } else {
+                for (i = 0; entity.bogieModelOffsets() !=null && i < entity.bogieModelOffsets().length; i++) {
+                    GL11.glPushMatrix();
+                    //bind the texture
+                    if (entity.getTexture().getBogieSkin(i) != null) {
+                        Tessellator.bindTexture(entity.getTexture().getBogieSkin(i));
+                    }
+                    //set the offset
+                    entity.renderData.animationCache[1] = RailUtility.rotatePointF(
+                            entity.bogieModelOffsets()[i][0],
+                            RailOffset + entity.bogieModelOffsets()[i][1]
+                            , entity.bogieModelOffsets()[i][2],
+                            entity.rotationPitch, entity.rotationYaw, 0);
+                    GL11.glTranslated(entity.renderData.animationCache[1][0] + x, entity.renderData.animationCache[1][1] + y+entity.frontBogie.yOffset, entity.renderData.animationCache[1][2] + z);
+                    entity.renderData.bogieRenders[i].setRotation(entity);
+                    //set the rotation
+                    GL11.glRotatef(-entity.renderData.bogieRenders[i].rotationYaw - 180f, 0.0f, 1.0f, 0);
+                    GL11.glRotatef(entity.rotationPitch - 180f, 0.0f, 0.0f, 1.0f);
+                    //render the geometry
+                    for (ModelRendererTurbo modelBogiePart : entity.renderData.bogieRenders[i].bogieModel.boxList) {
+                        modelBogiePart.render();
                     }
                     GL11.glPopMatrix();
                 }
@@ -227,13 +258,73 @@ public class RenderEntity extends Render {
 
         //render the particles, if there are any.
         for(ParticleFX particle : entity.renderData.particles){
-            GL11.glPushMatrix();
             ParticleFX.doRender(particle, x,y,z);
-            GL11.glPopMatrix();
         }
 
         GL11.glDisable(GL11.GL_BLEND);
-        GL11.glDisable(GL11.GL_TEXTURE_COORD_ARRAY);
-        GL11.glDisable(GL11.GL_VERTEX_ARRAY);
+
+
+
+        //render hitboxes
+        if(RenderManager.debugBoundingBox && entity.collisionHandler!=null && entity.collisionHandler.renderShape !=null) {
+            GL11.glPushMatrix();
+            GL11.glEnable(GL11.GL_BLEND);
+            OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+            GL11.glDisable(GL11.GL_LIGHTING);
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+            GL11.glDisable(GL11.GL_ALPHA_TEST);
+            //GL11.glDepthMask(false);
+
+            //todo: likely the issue is that x/y/z already deal with the entity position, but the pos _also_ have the position
+            //todo: so we need to seperate the position from the hitbox, likely by processing it seperatley here, or an additional gl translate if possible...
+            GL11.glTranslated(x,y,z);
+
+            GL11.glColor3f(1,1,1);
+            //GL11.glEnable(GL11.GL_LINE);
+            //DebugUtil.println(entity.collisionHandler.renderShape[0]);
+
+            Tessellator.getInstance().startDrawing(GL11.GL_LINE_STRIP);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[0].xCoord, entity.collisionHandler.renderShape[0].yCoord, entity.collisionHandler.renderShape[0].zCoord);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[1].xCoord, entity.collisionHandler.renderShape[1].yCoord, entity.collisionHandler.renderShape[1].zCoord);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[2].xCoord, entity.collisionHandler.renderShape[2].yCoord, entity.collisionHandler.renderShape[2].zCoord);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[3].xCoord, entity.collisionHandler.renderShape[3].yCoord, entity.collisionHandler.renderShape[3].zCoord);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[0].xCoord, entity.collisionHandler.renderShape[0].yCoord, entity.collisionHandler.renderShape[0].zCoord);
+            Tessellator.getInstance().draw();
+
+
+            Tessellator.getInstance().startDrawing(GL11.GL_LINE_STRIP);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[4].xCoord, entity.collisionHandler.renderShape[4].yCoord, entity.collisionHandler.renderShape[4].zCoord);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[5].xCoord, entity.collisionHandler.renderShape[5].yCoord, entity.collisionHandler.renderShape[5].zCoord);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[6].xCoord, entity.collisionHandler.renderShape[6].yCoord, entity.collisionHandler.renderShape[6].zCoord);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[7].xCoord, entity.collisionHandler.renderShape[7].yCoord, entity.collisionHandler.renderShape[7].zCoord);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[4].xCoord, entity.collisionHandler.renderShape[4].yCoord, entity.collisionHandler.renderShape[4].zCoord);
+            Tessellator.getInstance().draw();
+
+
+
+            Tessellator.getInstance().startDrawing(GL11.GL_LINES);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[0].xCoord, entity.collisionHandler.renderShape[0].yCoord, entity.collisionHandler.renderShape[0].zCoord);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[4].xCoord, entity.collisionHandler.renderShape[4].yCoord, entity.collisionHandler.renderShape[4].zCoord);
+            Tessellator.getInstance().draw();
+            Tessellator.getInstance().startDrawing(GL11.GL_LINES);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[1].xCoord, entity.collisionHandler.renderShape[1].yCoord, entity.collisionHandler.renderShape[1].zCoord);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[5].xCoord, entity.collisionHandler.renderShape[5].yCoord, entity.collisionHandler.renderShape[5].zCoord);
+            Tessellator.getInstance().draw();
+            Tessellator.getInstance().startDrawing(GL11.GL_LINES);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[2].xCoord, entity.collisionHandler.renderShape[2].yCoord, entity.collisionHandler.renderShape[2].zCoord);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[6].xCoord, entity.collisionHandler.renderShape[6].yCoord, entity.collisionHandler.renderShape[6].zCoord);
+            Tessellator.getInstance().draw();
+            Tessellator.getInstance().startDrawing(GL11.GL_LINE_STRIP);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[3].xCoord, entity.collisionHandler.renderShape[3].yCoord, entity.collisionHandler.renderShape[3].zCoord);
+            Tessellator.getInstance().addVertex(entity.collisionHandler.renderShape[7].xCoord, entity.collisionHandler.renderShape[7].yCoord, entity.collisionHandler.renderShape[7].zCoord);
+            Tessellator.getInstance().draw();
+
+            GL11.glDisable(GL11.GL_BLEND);
+            GL11.glEnable(GL11.GL_LIGHTING);
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+            GL11.glEnable(GL11.GL_ALPHA_TEST);
+            //GL11.glDepthMask(true);
+            GL11.glPopMatrix();
+        }
     }
 }

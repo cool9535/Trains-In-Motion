@@ -2,9 +2,8 @@ package ebf.tim.utility;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.launchwrapper.Launch;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * @author Ferdinand
@@ -35,11 +34,32 @@ public class DebugUtil {
 			System.out.println("------------------TiM Debug------------------");
 		}
 	}
+
+	@SideOnly(Side.CLIENT)
+	public static void printGLError(int glerror){
+		if(glerror!=0x0){
+			System.out.println("------------------TiM Debug------------------");
+			System.out.println(Thread.currentThread().getStackTrace()[2]);//print what function just called this
+			System.out.println(org.lwjgl.util.glu.GLU.gluErrorString(glerror));
+			System.out.println("------------------TiM Debug------------------");
+		}
+	}
 	public static void println(Object o){
 		if(dev()){
 			System.out.println("------------------TiM Debug------------------");
 			System.out.println(Thread.currentThread().getStackTrace()[2]);//print what function just called this
 			System.out.println(o);
+			System.out.println("------------------TiM Debug------------------");
+		}
+	}
+
+
+	public static void printStackTrace(){
+		if(dev()) {
+			System.out.println("------------------TiM Debug------------------");
+			for (StackTraceElement e : Thread.currentThread().getStackTrace()) {
+				System.out.println(e);
+			}
 			System.out.println("------------------TiM Debug------------------");
 		}
 	}
