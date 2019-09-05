@@ -5,18 +5,20 @@ import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import ebf.tim.TrainsInMotion;
 import ebf.tim.blocks.TileEntityStorage;
+import ebf.tim.blocks.rails.RailShapeCore;
 import ebf.tim.entities.EntityBogie;
 import ebf.tim.entities.EntitySeat;
 import ebf.tim.entities.GenericRailTransport;
 import ebf.tim.gui.*;
 import ebf.tim.items.ItemCraftGuide;
+import ebf.tim.items.ItemPaintBucket;
 import ebf.tim.items.ItemRail;
 import ebf.tim.models.RenderEntity;
 import ebf.tim.models.RenderScaledPlayer;
 import ebf.tim.models.rails.ModelBallast;
-import fexcraft.fcl.common.lang.ArrayList;
-import net.minecraft.block.Block;
+import ebf.tim.registry.TiMGenericRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.entity.Render;
@@ -25,7 +27,6 @@ import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
@@ -33,12 +34,12 @@ import net.minecraft.world.World;
 import net.minecraftforge.client.IItemRenderer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
-import net.minecraftforge.common.config.Property;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
 import java.io.File;
-import java.util.List;
+
+import static ebf.tim.registry.TiMGenericRegistry.RegisterItem;
 
 /**
  * <h1>client proxy</h1>
@@ -61,34 +62,29 @@ public class ClientProxy extends CommonProxy {
     public static boolean EnableParticles = true;
     /**whether or not animations should be enabled*/
     public static boolean EnableAnimations = true;
-    /**whether or not to use HD skins*/
-    public static boolean useHDSkins = false;
     /**whether or not to force texture binding*/
     public static boolean ForceTextureBinding = false;
     /**defines if the inventory graphics should be loaded from a TiM URI or if vanilla graphics should be used*/
     public static boolean useVanillaInventoryTextures = true;
-
+    /**enables the fake waila tooltip*/
     public static boolean enableTransportTooltip=true;
+    /**enables 3d items for trains and stock*/
+    public static boolean hdTransportItems = true;
     /**the keybind for the lamp toggle*/
     public static KeyBinding KeyLamp = new KeyBinding("Lamp Toggle", Keyboard.KEY_L, "Trains in Motion");
     /**the keybind for the horn/whistle*/
     public static KeyBinding KeyHorn = new KeyBinding("Use Horn/Whistle", Keyboard.KEY_H, "Trains in Motion");
     /**the keybind for opening the inventory*/
     public static KeyBinding KeyInventory = new KeyBinding("Open Train/rollingstock GUI",  Keyboard.KEY_I, "Trains in Motion");
-    /**the value for rail detail*/
-    public static int railLoD = 8;
     /**the skin to use for the rail*/
     public static int railSkin = 2;
 
-    public static KeyBinding raildevtoolUp;
-    public static KeyBinding raildevtoolDown;
-    public static KeyBinding raildevtoolLeft;
-    public static KeyBinding raildevtoolRight;
-    public static KeyBinding raildevtoolRaise;
-    public static KeyBinding raildevtoolLower;
+    public static KeyBinding raildevtoolUp, raildevtoolDown,
+            raildevtoolLeft, raildevtoolRight, raildevtoolRaise, raildevtoolLower;
 
-    public static KeyBinding raildevtoolNextPoint;
-    public static KeyBinding raildevtoolLastPoint;
+    public static KeyBinding raildevtoolNextPoint, raildevtoolLastPoint;
+
+    public static KeyBinding raildevtoolQuality;
 
 
     private static Configuration wailaConfig=null;
@@ -107,8 +103,12 @@ public class ClientProxy extends CommonProxy {
     @Override
     public Object getClientGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
         if (player != null) {
-            if(x==0&&y==0&&z==0&&ID==-1 && player.getHeldItem().getItem() instanceof ItemCraftGuide){
-                return new GUICraftBook();
+            if(x==0&&y==0&&z==0 && player.getHeldItem()!=null) {
+                if (player.getHeldItem().getItem() instanceof ItemCraftGuide) {
+                    return new GUICraftBook();
+                } else if (player.getHeldItem().getItem() instanceof ItemPaintBucket){
+                    return new GUISkinManager((GenericRailTransport) player.worldObj.getEntityByID(ID));
+                }
             }
             //Trains
             if (player.worldObj.getEntityByID(ID) instanceof GenericRailTransport && !((GenericRailTransport) player.worldObj.getEntityByID(ID)).hasCustomGUI()) {
@@ -128,10 +128,6 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public boolean isClient(){return true;}
-
-    public int getRailLoD(){
-        return 3;
-    }
 
     /**
      * <h2>Load config</h2>
@@ -154,13 +150,13 @@ public class ClientProxy extends CommonProxy {
         useVanillaInventoryTextures = config.getBoolean("UseVanillaInventoryTextures","Quality (Client only)", true,
                 "Overrides the render of train and rollingstock inventories to use textures from vanilla (including resourcepacks), so you can use textures in a texturepack specifically for this mod");
 
-        useVanillaInventoryTextures = config.getBoolean("UseVanillaInventoryTextures","Quality (Client only)", true,
-                "Overrides the render of train and rollingstock inventories to use textures from vanilla (including resourcepacks), so you can use textures in a texturepack specifically for this mod");
+        hdTransportItems = config.getBoolean("3dTransportItems","Quality (Client only)", true,
+                "Overrides the render of train and rollingstock items to use their full model. NOTICE: after the pre-alpha stages this should default to false.");
 
         ForceTextureBinding = config.getBoolean("ForceTextureBinding","Quality (Client only)", false,
                 "Forces textures to be bound, slows performance on some machines, speeds it up on others, and fixes a rare bug where the the texture does not get bound. So... This REALLY depends on your machine, see what works best for you.");
 
-        railLoD = config.getInt("railSkin","Quality (Client only)", 2,0,3,
+        railSkin = config.getInt("railSkin","Quality (Client only)", 2,0,3,
                 "Defines the skin to use. 0: flat 2D rail similar to vanilla. 1: basic 3D rail similar to an extruded 2D. 2: Normal 3D rail. 3: High detail 3D rail");
 
         enableTransportTooltip = config.getBoolean("EnableTooltip","Quality (Client only)", true,
@@ -184,24 +180,12 @@ public class ClientProxy extends CommonProxy {
             WAILA_GRADIENT2= wailaConfig.get("general", "waila.cfg.gradient2",2621567).getInt();
             WAILA_ALPHA= wailaConfig.get("general", "waila.cfg.alpha",0xEE).getInt();
             WAILA_FONTCOLOR= wailaConfig.get("general", "waila.cfg.fontcolor",10526880).getInt();
-            WAILA_STATE= WAILA_TOGGLE= wailaConfig.get("general", "waila.cfg.show", false).getBoolean();
 
         }
 
     }
 
     public static int WAILA_BGCOLOR = 1048592,WAILA_GRADIENT1 = 5243135,WAILA_GRADIENT2 = 2621567,WAILA_ALPHA = 0xEE,WAILA_FONTCOLOR=10526880;
-
-    public static boolean WAILA_TOGGLE=false, WAILA_STATE=false;
-
-    public static void toggleWaila(boolean set){
-        if(WAILA_TOGGLE && WAILA_STATE!=set){
-            wailaConfig.getCategory("general").put("waila.cfg.show", new Property("waila.cfg.show", String.valueOf(set), Property.Type.BOOLEAN));
-            wailaConfig.save();
-            WAILA_STATE=set;
-        }
-    }
-
     /**
      * <h2>Client Register</h2>
      * Used for registering client only functions and redirecting registering the items in the train registry with their own textures and models.
@@ -216,6 +200,10 @@ public class ClientProxy extends CommonProxy {
         //player scaler
         RenderingRegistry.registerEntityRenderingHandler(EntityPlayer.class, new RenderScaledPlayer());
 
+        //oveides the server registration of the rail item, so the client can have a complex model.
+        //   server can't load the CustomItemModel class due to it's reliance on GL imports.
+        railItem = RegisterItem(TrainsInMotion.proxy.isClient(),new ItemRail(),TrainsInMotion.MODID,  "timrail", null, TrainsInMotion.creativeTab, null, TiMGenericRegistry.itemModel);
+        //Minecraft.getMinecraft().render
 
 
         //keybinds
@@ -233,6 +221,8 @@ public class ClientProxy extends CommonProxy {
             raildevtoolNextPoint = new KeyBinding("Next Point", Keyboard.KEY_ADD, "Trains in Motion Dev");
             raildevtoolLastPoint = new KeyBinding("Previous Point", Keyboard.KEY_SUBTRACT, "Trains in Motion Dev");
 
+            raildevtoolQuality = new KeyBinding("Track Model Quality", Keyboard.KEY_DIVIDE, "Trains in Motion Dev");
+
 
             ClientRegistry.registerKeyBinding(raildevtoolUp);
             ClientRegistry.registerKeyBinding(raildevtoolDown);
@@ -242,6 +232,7 @@ public class ClientProxy extends CommonProxy {
             ClientRegistry.registerKeyBinding(raildevtoolLower);
             ClientRegistry.registerKeyBinding(raildevtoolNextPoint);
             ClientRegistry.registerKeyBinding(raildevtoolLastPoint);
+            ClientRegistry.registerKeyBinding(raildevtoolQuality);
         }
 
 
@@ -283,19 +274,19 @@ public class ClientProxy extends CommonProxy {
         public void renderItem(EntityLivingBase p_78443_1_, ItemStack p_78443_2_, int p_78443_3_, IItemRenderer.ItemRenderType type) {
             if(p_78443_2_.getItem() instanceof ItemRail){
                 if(p_78443_2_.getTagCompound().hasKey("ballast")){
-                    List<float[]> p = new ArrayList<>();
-                    p.add(new float[]{-0.5f,0f,0f});
-                    p.add(new float[]{0.5f,0f,0f});
+                    RailShapeCore p = new RailShapeCore();
+                    p.activePath.add(new Vec5f(-0.5f,0f,0f,0,0));
+                    p.activePath.add(new Vec5f(0.5f,0f,0f,0,0));
+                    p.gauge=new int[]{375};
                     ModelBallast.modelPotatoBallast(p,0.5f,-0.5f,
-                            ItemStack.loadItemStackFromNBT(p_78443_2_.getTagCompound().getCompoundTag("ballast")),
-                            1);
+                            ItemStack.loadItemStackFromNBT(p_78443_2_.getTagCompound().getCompoundTag("ballast")));
                 }
             }
 
         }
     }
 
-    private static final RenderEntity transportRenderer = new RenderEntity();
+    public static final RenderEntity transportRenderer = new RenderEntity();
 
     /**
      * <h3>null render</h3>

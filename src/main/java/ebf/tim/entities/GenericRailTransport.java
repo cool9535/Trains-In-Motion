@@ -1,5 +1,6 @@
 package ebf.tim.entities;
 
+import cofh.api.energy.IEnergyContainerItem;
 import com.mojang.authlib.GameProfile;
 import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
 import cpw.mods.fml.relauncher.Side;
@@ -8,6 +9,7 @@ import ebf.tim.TrainsInMotion;
 import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.skin;
 import ebf.tim.items.ItemKey;
+import ebf.tim.items.ItemPaintBucket;
 import ebf.tim.items.ItemTicket;
 import ebf.tim.models.Bogie;
 import ebf.tim.models.ParticleFX;
@@ -20,13 +22,13 @@ import fexcraft.tmt.slim.ModelBase;
 import io.netty.buffer.ByteBuf;
 import mods.railcraft.api.carts.IFluidCart;
 import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.item.EntityMinecart;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
@@ -42,10 +44,9 @@ import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.*;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
+import static ebf.tim.TrainsInMotion.transportTypes.*;
 import static ebf.tim.utility.RailUtility.rotatePointF;
 
 /**
@@ -132,6 +133,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
      * @see #setBoolean(boolValues, boolean)
      */
     private BitList bools = new BitList();
+
     public enum boolValues{BRAKE(0), LOCKED(1), LAMP(2), CREATIVE(3), COUPLINGFRONT(4), COUPLINGBACK(5), WHITELIST(6), RUNNING(7), @Deprecated DERAILED(8);
         public int index;
         boolValues(int index){this.index = index;}
@@ -199,7 +201,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
         this.dataWatcher.addObject(23, "");//owner
         this.dataWatcher.addObject(21, 0);//front linked transport
         this.dataWatcher.addObject(22, 0);//back linked transport
-        ResourceLocation s = SkinRegistry.getDefaultTexture(this.getClass());
+        ResourceLocation s = SkinRegistry.getDefaultTexture(this, null, false);
         this.dataWatcher.addObject(24, s==null?"":s.getResourceDomain()+":"+s.getResourcePath());//currently used
     }
 
@@ -287,10 +289,14 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
     }
 
     public boolean interact(int player, boolean isFront, boolean isBack, int key) {
+        EntityPlayer p =((EntityPlayer)worldObj.getEntityByID(player));
         if (worldObj.isRemote) {
+            if (p.getHeldItem()!=null && p.getHeldItem().getItem() instanceof ItemPaintBucket) {
+                p.openGui(TrainsInMotion.instance, getEntityId(), worldObj, 0, 0, 0);
+                return true;
+            }
             TrainsInMotion.keyChannel.sendToServer(new PacketInteract(key, getEntityId()));
         } else {
-            EntityPlayer p =((EntityPlayer)worldObj.getEntityByID(player));
             //check if the player has permission first.
             if (!getPermissions(p, false, false)) {
                 p.addChatMessage(new ChatComponentText(RailUtility.translate("You don't have permission to do that.")));
@@ -347,7 +353,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
                     }
                 }
                 case 1:{ //open GUI
-                    p.openGui(TrainsInMotion.instance, getEntityId(), worldObj, 0, 0, 0);
+                    p.openGui(TrainsInMotion.instance, getEntityId(), worldObj, 0, (int)posY, 0);
                     return true;
                 }case 15: {//toggle brake
                     setBoolean(boolValues.BRAKE, !getBoolean(boolValues.BRAKE));
@@ -527,11 +533,13 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
      */
 
     /**reads the data sent from client on entity spawn*/
+    @Deprecated //todo: send this data over the datawatcher or other more reliable means
     @Override
     public void readSpawnData(ByteBuf additionalData) {
         owner = new UUID(additionalData.readLong(), additionalData.readLong());
         rotationYaw = additionalData.readFloat();
     }
+    @Deprecated //todo: send this data over the datawatcher or other more reliable means
     /**sends the data to server from client*/
     @Override
     public void writeSpawnData(ByteBuf buffer) {
@@ -556,10 +564,10 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
         ownerName = tag.getString(NBTKeys.ownerName);
 
         String skin = tag.getString(NBTKeys.skinURI);
-        if(SkinRegistry.getSkin(this.getClass(),skin)!=null) {
+        if(SkinRegistry.getSkin(this, null, false,skin)!=null) {
             dataWatcher.updateObject(24, skin);
         } else {
-            dataWatcher.updateObject(24, SkinRegistry.getDefaultTexture(this.getClass()));
+            dataWatcher.updateObject(24, SkinRegistry.getDefaultTexture(this, null, false));
         }
 
 
@@ -888,7 +896,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
                     continue;
                 }
                 if (e instanceof EntityItem) {
-                    if (getType().isHopper() && e.posY > this.posY + 0.5f &&
+                    if (getTypes().contains(TrainsInMotion.transportTypes.HOPPER) && this.posY > this.posY + 0.5f &&
                             isItemValidForSlot(0, ((EntityItem) e).getEntityItem())) {
                         addItem(((EntityItem) e).getEntityItem());
                         worldObj.removeEntity(e);
@@ -956,29 +964,22 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
 
     /**
      * iterates all the links to check if the stock has a train
-     * todo: use this, ever
      */
     public void updateConsist(){
         List<GenericRailTransport> transports = new ArrayList<>();
         transports.add(this);
-        GenericRailTransport n =this, old;
 
         //check the front, then loop for every transport linked to it in opposite direction of this.
-        GenericRailTransport front = frontLinkedID==null?null:(GenericRailTransport) worldObj.getEntityByID(frontLinkedID);
-        while(front!=null){
-            transports.add(front);
-            old=front;
-            front=front.getOtherLink(n.getEntityId());
-            n=old;
+        GenericRailTransport link = frontLinkedID==null?null:(GenericRailTransport) worldObj.getEntityByID(frontLinkedID);
+        while(link!=null && !transports.contains(link)){
+            transports.add(link);
+            link = link.frontLinkedID==null?null:(GenericRailTransport) worldObj.getEntityByID(link.frontLinkedID);
         }
         //do it again, but for the back one
-        n=this;
-        front= backLinkedID==null?null:(GenericRailTransport) worldObj.getEntityByID(backLinkedID);
-        while(front!=null){
-            transports.add(front);
-            old=front;
-            front=front.getOtherLink(n.getEntityId());
-            n=old;
+        link= backLinkedID==null?null:(GenericRailTransport) worldObj.getEntityByID(backLinkedID);
+        while(link!=null && !transports.contains(link)){
+            transports.add(link);
+            link = link.backLinkedID==null?null:(GenericRailTransport) worldObj.getEntityByID(link.backLinkedID);
         }
 
         //now tell everything in the list, including this, that there's a new list, and provide said list.
@@ -1131,20 +1132,44 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
     /**defines the ID of the owner*/
     public String getOwnerName(){return ownerName.equals("")?this.dataWatcher.getWatchableObjectString(23):ownerName;}
 
-    public skin getTexture(){
-        return SkinRegistry.getSkin(this.getClass(), this.dataWatcher.getWatchableObjectString(24));
+    public skin getTexture(EntityPlayer viewer){
+        return getSkinList(viewer, false).get(this.dataWatcher.getWatchableObjectString(24));
+    }
+
+    /**
+     * NOTE: lists are hash maps, their index order is different every time an entry is added or removed.
+     * todo: reliability improvement: make a version of this that builds a list of the keys
+     *     and then use the indexes of the keys to iterate, keys could also be cached on init of the skins
+     *     or we could move to some form of ordered map, although that would damage normal render performance.
+     * @param viewer
+     * @param isPaintBucket
+     * @param skinIndex
+     * @return
+     */
+    public skin getTextureByIndex(EntityPlayer viewer, boolean isPaintBucket, int skinIndex){
+        Iterator<skin> s =getSkinList(viewer, isPaintBucket).values().iterator();
+        for(int i=0;i<skinIndex;i++){
+            s.next();
+        }
+        return s.next();
+    }
+
+    /**
+     * Method to allow entities to override skin interactions.
+     * for example, only allowing a specific player to apply a skin from the paint bucket,
+     *     or returning a different skin during render based on the transport's state.
+     *
+     * If the player is null, then the call is being made for saving and loading, and usually should not be modified.
+     * When the player is null, isPaintBucket is false, so that allows null checks to be skipped by checking the bool first, in most cases.
+     */
+    public Map<String, skin> getSkinList(EntityPlayer viewer, boolean isPaintBucket){
+        return SkinRegistry.getTransportSkins(getClass());
     }
 
     public List<ParticleFX> getParticles(){
         return renderData.particles;
     }
 
-
-    public @Nullable GenericRailTransport getOtherLink(@Nullable Integer notThisOne){
-        return frontLinkedID == notThisOne?
-                backLinkedID==null?null:(GenericRailTransport) worldObj.getEntityByID(backLinkedID):
-                frontLinkedID==null?null:(GenericRailTransport) worldObj.getEntityByID(frontLinkedID);
-    }
 
     @SideOnly(Side.CLIENT)
     public boolean isInRangeToRenderDist(double p_70112_1_)
@@ -1230,6 +1255,13 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
         return new ItemStack(getItem(),1);
     }
 
+
+    /**returns the type of transport, this is planned to be removed in favor of a few more methods.
+     * for a list of options:
+     * @see TrainsInMotion.transportTypes
+     * may not return null.*/
+    public List<TrainsInMotion.transportTypes> getTypes(){return TrainsInMotion.transportTypes.SLUG.singleton();}
+
     /**
      * <h2>is Locked</h2>
      * returns if the entity is locked, and if it is, if the player is the owner.
@@ -1250,23 +1282,25 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
     public boolean isItemValidForSlot(int slot, ItemStack itemStack) {
         if (itemStack == null){return true;}
         //compensate for specific rollingstock
-        switch (getType()) {
-            case LOGCAR: {
-                return RailUtility.isLog(itemStack) || RailUtility.isPlank(itemStack);
+        for(TrainsInMotion.transportTypes type : getTypes()){
+            if(type==LOGCAR && (RailUtility.isLog(itemStack) || RailUtility.isPlank(itemStack))){
+                return true;
             }
-            case COALHOPPER: {
-                return RailUtility.isCoal(itemStack);
+            if (type==COALHOPPER && RailUtility.isCoal(itemStack)){
+                return true;
             }
-            case STEAM: {
+            if (type==STEAM){
                 if (slot == 36) {
                     return TileEntityFurnace.getItemBurnTime(itemStack) > 0;
                 } else if (slot ==37) {
                     return itemStack.getItem() instanceof ItemBucket || FuelHandler.isUseableFluid(itemStack, this) != null;
-                } else {
-                    return true;
                 }
             }
-            case ELECTRIC: case DIESEL: case B_UNIT: case TANKER:{return slot==0 && FuelHandler.isUseableFluid(itemStack, this) != null;}
+            if (type==ELECTRIC && slot==36){
+                return itemStack.getItem() == Items.redstone ||
+                        itemStack.getItem() == Item.getItemFromBlock(Blocks.redstone_block) ||
+                        itemStack.getItem() instanceof IEnergyContainerItem;
+            }
         }
         return true;
     }
@@ -1446,10 +1480,10 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
         if(getTankCapacity()==null){return resource.amount;}
         int leftoverDrain=resource.amount;
         for(int stack =0; stack<getTankCapacity().length;stack++) {
-            if(getTankFilters(stack)!=null) {
+            if(getTankFilters()!=null && getTankFilters()[stack]!=null) {
                 boolean check=false;
-                for (String filter : getTankFilters(stack)) {
-                    if (filter.length()==0 || filter.contains(resource.getFluid().getName())){
+                for (String filter : getTankFilters()[stack]) {
+                    if (filter.length()==0 || RailUtility.stringContains(filter,resource.getFluid().getName())){
                         check=false;
                         break;
                     } else {
@@ -1663,11 +1697,11 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
      * may return null*/
     public int[] getTankCapacity(){return null;}
 
-    /** defines the whitelist of fluid names for the tank defined by tankID
+    /** defines the whitelist of fluid names for fluid tanks in order.
+     * null will accept any fluid.
      * example:
-     * if(tankID==0){return new String[]{"water", "diesel"}} else { return null}*/
-    @Deprecated //replace with an array of string arrays, more similar to other methods
-    public String[] getTankFilters(int tankID){return null;}
+     * return new String[][]{{"water", "diesel"}, {"lava"}, null}*/
+    public String[][] getTankFilters(){return null;}
 
 
     /**this function allows individual trains and rollingstock to implement custom fuel consumption and management
@@ -1707,16 +1741,6 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
         }
     }
 
-    /**
-     * returns an animator instance, should fully support classes that extend StaticModelAnimator but have different logic.
-     * if this fails, we may need to rely on some form of abstraction, or direct class calls.
-     * NOTE: even though it's marked side only for client, imports can still load, so use the full class address to avoid importing client only classes.
-     */
-    @SideOnly(Side.CLIENT)
-    public ebf.tim.models.StaticModelAnimator customAnimator(fexcraft.tmt.slim.ModelRendererTurbo model){
-        return new ebf.tim.models.StaticModelAnimator().init(model);
-    }
-
 
     /**defines the weight of the transport.*/
     public float weightKg(){return 907.18474f;}
@@ -1726,7 +1750,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
      * return new ItemStack[]{new ItemStack(Blocks.dirt, 2), new ItemStack(Blocks.glass,1), etc};
      * array must contain 9 values. may not return null.*/
     public ItemStack[] getRecipie(){return new ItemStack[]{
-      new ItemStack(Blocks.dirt),null,null,null,null,null,null,null,null
+            new ItemStack(Blocks.dirt),null,null,null,null,null,null,null,null
     };}
 
 
@@ -1754,26 +1778,11 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
      * may return null.*/
     public String[] additionalItemText(){return null;}
 
-
-
-    /*
-    <h1>stuff i need to replace soon</h1>
-     */
-
-
-    /**returns the type of transport, this is planned to be removed in favor of a few more methods.
-     * for a list of options:
-     * @see TrainsInMotion.transportTypes
-     * may not return null.*/
-    @Deprecated
-    public TrainsInMotion.transportTypes getType(){return TrainsInMotion.transportTypes.SLUG;}
-
     /**returns the item of this transport, this should be a static value in the transport's class.
      * example:
      * public static final Item thisItem = new ItemTransport(new EntityThis(null));
      * Item getItem(){return thisItem;}
      * may not return null*/
-    @Deprecated
     public Item getItem(){return null;}
 
 }

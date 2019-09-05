@@ -229,7 +229,7 @@ public class GUITransport extends GUIContainerNoNEI {
                     }
                 });
             }
-            if (transport.getType() != TrainsInMotion.transportTypes.STEAM) {
+            if (!transport.getTypes().contains(TrainsInMotion.transportTypes.STEAM)) {
                 this.buttons.add(new GUIButton(guiLeft + 202, guiTop + 166, 18, 18, null, null){
 
                     @Override
@@ -431,8 +431,8 @@ public class GUITransport extends GUIContainerNoNEI {
                                     transport.getTankInfo(null)[i].fluid.amount+"mb/"+ transport.getTankInfo(null)[i].capacity+"mb", mouseX-guiLeft, mouseY-guiTop);
 
                 } else {
-                    if (transport.getTankFilters(i)!=null && transport.getTankFilters(i).length>0) {
-                        drawCreativeTabHoveringText(transport.getTankFilters(i)[0] + ", 0mb/" + transport.getTankInfo(null)[i].capacity + "mb", mouseX-guiLeft, mouseY-guiTop);
+                    if (transport.getTankFilters()!=null && transport.getTankFilters()[i]!=null && transport.getTankFilters()[i].length>0) {
+                        drawCreativeTabHoveringText(transport.getTankFilters()[i][0] + ", 0mb/" + transport.getTankInfo(null)[i].capacity + "mb", mouseX-guiLeft, mouseY-guiTop);
                     }else{
                         drawCreativeTabHoveringText(", 0mb/" + transport.getTankInfo(null)[i].capacity + "mb", mouseX-guiLeft, mouseY-guiTop);
 

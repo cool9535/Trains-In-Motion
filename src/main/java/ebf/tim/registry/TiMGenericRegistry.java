@@ -2,14 +2,14 @@ package ebf.tim.registry;
 
 
 import cpw.mods.fml.common.registry.GameRegistry;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import ebf.tim.TrainsInMotion;
 import ebf.tim.blocks.BlockTrainFluid;
 import ebf.tim.entities.GenericRailTransport;
-import ebf.tim.gui.GUICraftBook;
+import ebf.tim.items.CustomItemModel;
 import ebf.tim.items.ItemCraftGuide;
-import ebf.tim.utility.DebugUtil;
-import ebf.tim.utility.Recipe;
-import ebf.tim.utility.RecipeManager;
+import ebf.tim.utility.*;
 import net.minecraft.block.Block;
 import net.minecraft.block.ITileEntityProvider;
 import net.minecraft.block.material.MapColor;
@@ -135,6 +135,9 @@ public class TiMGenericRegistry {
         }
     }
 
+    @SideOnly(Side.CLIENT)
+    public static CustomItemModel itemModel = new CustomItemModel();
+
     private static List<String>usedNames = new ArrayList<>();
     private static int registryPosition =17;
 
@@ -152,21 +155,18 @@ public class TiMGenericRegistry {
                     registry.transportName().replace(" ","") + ".entity",
                     registryPosition, TrainsInMotion.instance, 3000, 1, true);
             GameRegistry.registerItem(registry.getCartItem().getItem(), registry.getCartItem().getItem().getUnlocalizedName());
-            if(GUICraftBook.recipesInMods.containsKey(MODID)){
-                GUICraftBook.recipesInMods.get(MODID).add(new Recipe(registry.getCartItem(),
-                        registry.getRecipie()[0], registry.getRecipie()[1], registry.getRecipie()[2]
-                        , registry.getRecipie()[3], registry.getRecipie()[4], registry.getRecipie()[5]
-                        , registry.getRecipie()[6], registry.getRecipie()[7], registry.getRecipie()[8]));
+            if(CommonProxy.recipesInMods.containsKey(MODID)){
+                CommonProxy.recipesInMods.get(MODID).add(getRecipe(registry.getRecipie(), registry.getCartItem()));
             } else {
-                GUICraftBook.recipesInMods.put(MODID, new ArrayList<Recipe>());
-                GUICraftBook.recipesInMods.get(MODID).add(new Recipe(registry.getCartItem(),
-                        registry.getRecipie()[0], registry.getRecipie()[1], registry.getRecipie()[2]
-                        , registry.getRecipie()[3], registry.getRecipie()[4], registry.getRecipie()[5]
-                        , registry.getRecipie()[6], registry.getRecipie()[7], registry.getRecipie()[8]));
+                CommonProxy.recipesInMods.put(MODID, new ArrayList<Recipe>());
+                CommonProxy.recipesInMods.get(MODID).add(getRecipe(registry.getRecipie(), registry.getCartItem()));
+            }
+            if(isClient && ClientProxy.hdTransportItems){
+                MinecraftForgeClient.registerItemRenderer(registry.getCartItem().getItem(), itemModel);
             }
             registry.registerSkins();
             if(registry.getRecipie()!=null){
-                RecipeManager.registerRecipe(registry.getCartItem(), registry.getRecipie());
+                RecipeManager.registerRecipe(getRecipe(registry.getRecipie(), registry.getCartItem()));
             }
             if(isClient){
                 ItemCraftGuide.itemEntries.add(registry.getClass());
@@ -183,5 +183,81 @@ public class TiMGenericRegistry {
     public static void endRegistration(){
         usedNames =null; registryPosition=-1;
     }
+
+    private static Recipe getRecipe(Object[] obj, ItemStack cartItem){
+        return new Recipe(new ItemStack[]{cartItem},
+                getItem(obj[0]),
+                getItem(obj[1]),
+                getItem(obj[2]),
+                getItem(obj[3]),
+                getItem(obj[4]),
+                getItem(obj[5]),
+                getItem(obj[6]),
+                getItem(obj[7]),
+                getItem(obj[8])
+        );
+    }
+
+    public static ItemStack[] getItem(Object itm){
+        ItemStack[] list = new ItemStack[1];
+        if(itm==null){
+            return list;
+        }
+        if(itm instanceof ItemStack){
+            list=ODC((ItemStack)itm);
+        }
+        else if (itm instanceof Item){
+            list=ODC(new ItemStack((Item)itm));
+        }
+        else if (itm instanceof Block){
+            list=ODC(new ItemStack((Block)itm));
+        }
+        else if(itm instanceof String){
+            String[] data = ((String) itm).split(" ");
+            int stacksize = data.length>1?Integer.parseInt(data[1].trim()):1;
+            //cover actual items
+            if(data[0].contains(":")){
+                list=ODC(GameRegistry.findItemStack(data[0].split(":")[0], data[0].split(":")[1], stacksize));
+            } else {
+                //cover ore directory values
+                list=OreDictionary.getOres(data[0]).toArray(new ItemStack[]{});
+                for(ItemStack s : list){
+                    s.stackSize=stacksize;
+                }
+            }
+
+        }
+        return list;
+    }
+
+    /**Ore Directory Converter
+     * converts any input to the ore directory version so recipes will have automatic ore directory support*/
+    public static ItemStack[] ODC(ItemStack s){
+        if(s==null){
+            return null;
+        }
+        //cache the old size and set it to 1, the ore directory only contains entries with a stacksize of 1,
+        //   anything else can break the equals check.
+        int oldSize = s.stackSize;
+        s.stackSize=1;
+
+        List<ItemStack> dir = new ArrayList<>();
+        //create a list of ore directory entries
+        for(int oreID : OreDictionary.getOreIDs(s)){
+            dir.addAll(OreDictionary.getOres(oreID));
+        }
+        if(dir.size()>0) {
+            for (ItemStack stack : dir) {
+                stack.stackSize = oldSize;
+            }
+        } else {
+            s.stackSize=oldSize;
+            dir.add(s);
+        }
+        return dir.toArray(new ItemStack[]{});
+
+    }
+
+
 
 }

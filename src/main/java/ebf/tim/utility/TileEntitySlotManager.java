@@ -2,22 +2,18 @@ package ebf.tim.utility;
 
 import ebf.tim.blocks.TileEntityStorage;
 import ebf.tim.items.ItemRail;
-import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.Slot;
-import net.minecraft.inventory.SlotCrafting;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * <h1>Tile Entity Container</h1>
@@ -139,7 +135,7 @@ public class TileEntitySlotManager extends Container{
     }
 
     public void putStackInSlot(int slot, ItemStack stack, boolean isPlayerInventory) {
-        ((Slot)this.inventorySlots.get(isPlayerInventory?slot:slot+36)).putStack(stack);
+        ((Slot)this.inventorySlots.get(isPlayerInventory?slot:slot+35)).putStack(stack);
     }
 
     /**
@@ -155,7 +151,7 @@ public class TileEntitySlotManager extends Container{
                     break;
                 }
                 case 1: {
-                    putStackInSlot(3, railRecipe(), false);
+                    putStackInSlot(4, railRecipe(), false);
                     break;
                 }
             }
@@ -286,6 +282,10 @@ public class TileEntitySlotManager extends Container{
         public void onSlotChanged(){
             super.onSlotChanged();
             onCraftMatrixChanged(craftingTable);
+        }
+        @Override
+        public void putStack(ItemStack p_75215_1_) {
+            this.inventory.setInventorySlotContents(this.getSlotIndex(), p_75215_1_);
         }
     }
 

@@ -24,6 +24,9 @@ import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fluids.Fluid;
 
 import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static cpw.mods.fml.common.registry.GameRegistry.addRecipe;
@@ -39,6 +42,10 @@ public class CommonProxy implements IGuiHandler {
 
 
     public static EventManagerServer eventManagerServer = new EventManagerServer();
+    public static Map<String, List<Recipe>> recipesInMods = new HashMap<>();
+
+
+
 
     /**
      * <h2> Server GUI Redirect </h2>
@@ -50,7 +57,7 @@ public class CommonProxy implements IGuiHandler {
     @Override
     public Object getServerGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
         //Trains
-        if (player != null) {
+        if (player != null && y!=0) {
             if (player.worldObj.getEntityByID(ID) instanceof GenericRailTransport && !((GenericRailTransport) player.worldObj.getEntityByID(ID)).hasCustomGUI()) {
                 return new TransportSlotManager(player.inventory, (GenericRailTransport) player.worldObj.getEntityByID(ID));
                 //tile entities
@@ -61,7 +68,7 @@ public class CommonProxy implements IGuiHandler {
         return null;
     }
 
-    public void adminGui(String datacsv){};
+    public void adminGui(String datacsv){}
 
     public boolean isClient(){return false;}
 
@@ -159,9 +166,12 @@ public class CommonProxy implements IGuiHandler {
         RegisterItem(TrainsInMotion.proxy.isClient(),new ItemAdminBook(),TrainsInMotion.MODID, "adminbook", TrainsInMotion.creativeTab);
         RegisterItem(TrainsInMotion.proxy.isClient(),new ItemCraftGuide(),TrainsInMotion.MODID, "craftbook", TrainsInMotion.creativeTab);
 
+	RegisterItem(TrainsInMotion.proxy.isClient(),new ItemPaintBucket(),TrainsInMotion.MODID, "paintbucket", TrainsInMotion.creativeTab); 
         RegisterItem(TrainsInMotion.proxy.isClient(),new ItemKey(),TrainsInMotion.MODID,  "transportkey", TrainsInMotion.creativeTab);
         RegisterItem(TrainsInMotion.proxy.isClient(),new ItemTicket(),TrainsInMotion.MODID,  "transportticket", TrainsInMotion.creativeTab);
-        railItem = RegisterItem(TrainsInMotion.proxy.isClient(),new ItemRail(),TrainsInMotion.MODID,  "timrail", TrainsInMotion.creativeTab);
+        if(!isClient()) {
+            railItem = RegisterItem(TrainsInMotion.proxy.isClient(), new ItemRail(), TrainsInMotion.MODID, "timrail", TrainsInMotion.creativeTab);
+        }
 
         registerBlock(isClient(), railBlock, null, "block.timrail", null, getTESR());
 

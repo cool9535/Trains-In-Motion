@@ -1,23 +1,18 @@
 package ebf.tim.utility;
 
 import cpw.mods.fml.client.FMLClientHandler;
-import cpw.mods.fml.common.Loader;
-import cpw.mods.fml.common.eventhandler.Event;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
-import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import ebf.tim.TrainsInMotion;
-import ebf.tim.api.SkinRegistry;
 import ebf.tim.entities.EntitySeat;
 import ebf.tim.entities.EntityTrainCore;
 import ebf.tim.entities.GenericRailTransport;
 import ebf.tim.networking.PacketInteract;
 import fexcraft.tmt.slim.Tessellator;
 import fexcraft.tmt.slim.Vec3d;
-import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityClientPlayerMP;
 import net.minecraft.client.gui.ScaledResolution;
@@ -26,17 +21,10 @@ import net.minecraft.client.renderer.entity.RenderItem;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.DamageSource;
 import net.minecraft.util.ReportedException;
 import net.minecraft.util.StatCollector;
-import net.minecraftforge.client.event.RenderWorldEvent;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.event.entity.player.AttackEntityEvent;
-import net.minecraftforge.event.entity.player.EntityInteractEvent;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
@@ -149,16 +137,20 @@ public class EventManager {
 
             if (ClientProxy.raildevtoolNextPoint.isPressed()){
                 ClientProxy.devSplineCurrentPoint++;
-                if (ClientProxy.devSplineCurrentPoint>3){
-                    ClientProxy.devSplineCurrentPoint = 0;
-                }
                 Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText("current point is now " + ClientProxy.devSplineCurrentPoint));
             } else if (ClientProxy.raildevtoolLastPoint.isPressed()){
                 ClientProxy.devSplineCurrentPoint--;
                 if (ClientProxy.devSplineCurrentPoint<0){
-                    ClientProxy.devSplineCurrentPoint = 3;
+                    ClientProxy.devSplineCurrentPoint = 0;
                 }
                 Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText("current point is now " + ClientProxy.devSplineCurrentPoint));
+            }
+            if (ClientProxy.raildevtoolQuality.isPressed()){
+                ClientProxy.railSkin++;
+                if(ClientProxy.railSkin>3){
+                    ClientProxy.railSkin=0;
+                }
+                Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText("Displaying rail model " + ClientProxy.railSkin));
             }
         }
     }
@@ -169,19 +161,10 @@ public class EventManager {
         if (Mouse.isButtonDown(1) || Mouse.isButtonDown(0)) {
             if (selected != null) {
                 (selected).interact(Minecraft.getMinecraft().thePlayer.getEntityId(), false, false, Mouse.isButtonDown(1) ? -1 : -999);
-                MinecraftForge.EVENT_BUS.post(new EntityInteractEvent(Minecraft.getMinecraft().thePlayer, selected));
+                //MinecraftForge.EVENT_BUS.post(new EntityInteractEvent(Minecraft.getMinecraft().thePlayer, selected));
             }
         }
     }
-
-
-    @SubscribeEvent
-    public void EntityInteractEvent(EntityInteractEvent e){
-        if(e.target instanceof GenericRailTransport){
-            e.setCanceled(true);
-        }
-    }
-
 
     private static List<GenericRailTransport> getTrainsInRange(Entity entity){
         ArrayList<GenericRailTransport> list =new ArrayList<>();
@@ -198,6 +181,7 @@ public class EventManager {
     public void onTick(TickEvent.PlayerTickEvent e){
         //every 10 player ticks get the nearby trains and cache if the player is looking at said train.
         if(e.player.worldObj!= null && e.player.ticksExisted%10==0){
+            selected=null;
             //skip when riding train/stock
             if(e.player.ridingEntity instanceof GenericRailTransport ||
                     e.player.ridingEntity instanceof EntitySeat){
@@ -207,13 +191,13 @@ public class EventManager {
             stock = getTrainsInRange(e.player);
 
             if(stock!=null && stock.size()>0){
-                vec = RailUtility.rotateDistance(0.1875f, e.player.rotationPitch, 90+e.player.rotationYawHead);
+                vec = RailUtility.rotateDistance(0.0625f, e.player.rotationPitch, (e.player.rotationYawHead%360)-270);
                 for (GenericRailTransport t : stock) {
                     if(t.collisionHandler.containsPlayer(e.player)){
                         continue;
                     }
                     //loop for each index in distance.
-                    for (int i=0; i<(Minecraft.getMinecraft().playerController.extendedReach()?32:16); i++) {
+                    for (int i=0; i<(Minecraft.getMinecraft().playerController.extendedReach()?96:48); i++) {
                         vert = vec.crossProduct(i);
                         if (t.collisionHandler.containsPoint(
                                 vert.xCoord+e.player.posX,
@@ -225,7 +209,6 @@ public class EventManager {
                     }
                 }
             }
-            selected=null;
         }
 
 
@@ -233,13 +216,13 @@ public class EventManager {
 
 
 
+
     @SubscribeEvent
     @SuppressWarnings("unused")
     public void onRenderTick(TickEvent.RenderTickEvent event) {
-        if(Minecraft.getMinecraft().currentScreen==null && selected!=null && selected.getCartItem()!=null){
-            ClientProxy.toggleWaila(false);
+        if(event.phase == TickEvent.Phase.END && event.side.isClient() && Minecraft.getMinecraft().currentScreen==null && selected!=null){
             left=new ScaledResolution(Minecraft.getMinecraft(),Minecraft.getMinecraft().displayWidth, Minecraft.getMinecraft().displayHeight).getScaledWidth()/2;
-            disp=getStaticStrings(selected);
+            disp=getStaticStrings(selected, Minecraft.getMinecraft().thePlayer);
             longest=0;
             for(String s: disp){
                 if(Minecraft.getMinecraft().fontRenderer.getStringWidth(s)>longest){
@@ -248,12 +231,14 @@ public class EventManager {
             }
             longest*=0.3;
             longest+=10;
-
-            drawTooltipBox(left-(longest)-35, 2, 70+(longest*2), 8+(10*disp.length), ClientProxy.WAILA_BGCOLOR, ClientProxy.WAILA_GRADIENT1, ClientProxy.WAILA_GRADIENT2,ClientProxy.WAILA_ALPHA);
+            //GL11.glTranslatef(0.0F, 0.0F, 100);
+            drawTooltipBox(left-(longest)-35, 2, 70+(longest*2), 8+(10*disp.length), ClientProxy.WAILA_BGCOLOR, ClientProxy.WAILA_GRADIENT1, ClientProxy.WAILA_GRADIENT2,100);
 
             GL11.glTranslatef(0.0F, 0.0F, 32.0F);
-            itemRender.renderItemAndEffectIntoGUI(Minecraft.getMinecraft().fontRenderer, Minecraft.getMinecraft().getTextureManager(),
-                    selected.getCartItem(), left-(longest)-30, 12);
+            if(selected!=null && selected.getCartItem()!=null) {
+                itemRender.renderItemAndEffectIntoGUI(Minecraft.getMinecraft().fontRenderer, Minecraft.getMinecraft().getTextureManager(),
+                        selected.getCartItem(), left - (longest) - 30, 12);
+            }
             GL11.glDisable(GL11.GL_LIGHTING);
             for(int ii=0; ii<disp.length;ii++) {
                 Minecraft.getMinecraft().fontRenderer.drawString(disp[ii],
@@ -261,27 +246,23 @@ public class EventManager {
             }
             GL11.glEnable(GL11.GL_LIGHTING);
             //todo: draw an array of strings for the tooltip info, derrived from the transport's class.
-
-            ClientProxy.toggleWaila(true);
         }
     }
+
     private static int left=0,longest;
     private static String[] disp;
     private static RenderItem itemRender = new RenderItem();
 
-    private static String[] getStaticStrings(GenericRailTransport t){
+    private static String[] getStaticStrings(GenericRailTransport t, EntityPlayer p){
         return new String[]{
-                StatCollector.translateToLocal(t.getItem().getUnlocalizedName()+".name"),
+                StatCollector.translateToLocal(t.getInventoryName().replace(".storage","")+".name"),
                 "owner: " + t.getOwnerName(),
-                "skin: " + SkinRegistry.getSkin(t.getClass(), t.getDataWatcher().getWatchableObjectString(24)).name
+                "skin: " + t.getTexture(p).name
         };
     }
 
-    @SubscribeEvent
-    @SuppressWarnings("unused")
-    public void playerQuitEvent(PlayerEvent.PlayerLoggedOutEvent event){
-        ClientProxy.toggleWaila(ClientProxy.WAILA_TOGGLE);
-    }
+
+
 
     public static void drawGradientRect(int x, int y, int w, int h, int grad1, int grad2, int alpha) {
         Tessellator.getInstance().startDrawing(GL11.GL_QUADS);

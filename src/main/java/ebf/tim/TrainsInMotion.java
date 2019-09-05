@@ -27,6 +27,9 @@ import net.minecraft.creativetab.CreativeTabs;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.MinecraftForge;
 
+import java.util.Collections;
+import java.util.List;
+
 
 /**
  * <h1>Main class</h1>
@@ -45,7 +48,7 @@ public class TrainsInMotion {
     /**the ID of the mod and the version displayed in game, as well as used for version check in the version.txt file*/
     public static final String MODID = "trainsinmotion";
     /**the version identifier of the mod*/
-    public static final String MOD_VERSION="0.31 pre-alpha";
+    public static final String MOD_VERSION="0.32 pre-alpha";
     /**an instance of the mod*/
     @Mod.Instance(MODID)
     public static TrainsInMotion instance;
@@ -63,6 +66,7 @@ public class TrainsInMotion {
     /**instance the network wrapper for the channels.
      * Every wrapper runs on it's own thread, so heavy traffic should go on it's own wrapper, using channels to separate packet types.*/
     public static SimpleNetworkWrapper keyChannel;
+    public static SimpleNetworkWrapper trackChannel;
 
 
     /**Instance a new chunk handler, this class manages chunk loading events and functionality.*/
@@ -75,7 +79,6 @@ public class TrainsInMotion {
      */
 
      /**define the transport types*/
-     @Deprecated //obsolete in favor of interfaces or type classes
     public enum transportTypes {
         STEAM,DIESEL,HYDROGEN_DIESEL,ELECTRIC,NUCLEAR_STEAM,NUCLEAR_ELECTRIC, //trains
         PASSENGER, FREIGHT, HOPPER, TANKER, WORKCAR, SLUG, B_UNIT, //generic rollingstock
@@ -92,6 +95,7 @@ public class TrainsInMotion {
          public boolean isTanker(){
              return this == TANKER || this == LAVATANKER || this == OILCAR || this == FUELTANKER;
          }
+         public List<transportTypes> singleton(){return Collections.singletonList(this);}
     }
 
     /**
@@ -140,7 +144,7 @@ public class TrainsInMotion {
         TrainsInMotion.keyChannel.registerMessage(PacketRemove.Handler.class, PacketRemove.class, 2, Side.SERVER);
         TrainsInMotion.keyChannel.registerMessage(ItemAdminBook.PacketAdminBook.Handler.class, ItemAdminBook.PacketAdminBook.class, 3, Side.CLIENT);
         TrainsInMotion.keyChannel.registerMessage(ItemAdminBook.PacketAdminBookClient.Handler.class, ItemAdminBook.PacketAdminBookClient.class, 4, Side.SERVER);
-
+        TrainsInMotion.trackChannel = NetworkRegistry.INSTANCE.newSimpleChannel("TiM.track");
 
         proxy.register();
         //register the worldgen

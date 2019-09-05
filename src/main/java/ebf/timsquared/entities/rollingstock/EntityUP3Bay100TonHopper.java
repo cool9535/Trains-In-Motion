@@ -14,6 +14,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 
+import java.util.List;
 import java.util.UUID;
 
 import static ebf.tim.utility.RailUtility.DefineStack;
@@ -87,7 +88,7 @@ public class EntityUP3Bay100TonHopper extends RollingstockBase {
     }
 
     @Override
-    public String[] getTankFilters(int tankID) {
+    public String[][] getTankFilters() {
         return null;
     }
 
@@ -174,7 +175,7 @@ public class EntityUP3Bay100TonHopper extends RollingstockBase {
      * <h2>Type</h2>
      */
     @Override
-    public TrainsInMotion.transportTypes getType(){return TrainsInMotion.transportTypes.HOPPER;}
+    public List<TrainsInMotion.transportTypes> getTypes(){return TrainsInMotion.transportTypes.HOPPER.singleton();}
     /**
      * <h2>Rider offsets</h2>
      */

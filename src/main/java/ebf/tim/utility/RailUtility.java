@@ -14,11 +14,17 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraftforge.oredict.OreDictionary;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.io.IOUtils;
 import zoranodensha.api.structures.tracks.ITrackBase;
 
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * <h1>utilities</h1>
@@ -45,6 +51,38 @@ public class RailUtility {
     }
 
 
+    public static boolean stringContains(String s1, String s2){
+        if (s1 == null || s2 == null) {
+            return false;
+        }
+        final int max = s1.length() - s2.length();
+        for (int i = 0; i <= max; i++) {
+            if (s1.regionMatches(true, i, s2, 0, s2.length())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static int parseInt(String str, Class host) throws NumberFormatException{
+        if (str == null || str.length()==0) {
+            throw new NumberFormatException("the string: \"" + str + "\" was not a number, please check " + host.getName());
+        }
+
+        int result = 0;
+        boolean negative = false;
+        for (char c : str.toCharArray()) {
+            if(c=='-'){
+                negative=true;
+            } else {
+                if (c < '0' || c > '9') {
+                    throw new NumberFormatException("the string: \"" + str + "\" was not a number, please check " + host.getName());
+                }
+                result = (result * 10) + c;
+            }
+        }
+        return negative?-result:result;
+    }
 
     public static String translate(String text){
         if (StatCollector.translateToLocal(text).equals(text) && !loggedLangChecks.contains(text)){
@@ -65,6 +103,29 @@ public class RailUtility {
         return ret;
     }
 
+    public static String compressString(String str){
+        try {
+            ByteArrayOutputStream obj = new ByteArrayOutputStream();
+            GZIPOutputStream gzip = new GZIPOutputStream(obj);
+            gzip.write(str.getBytes(StandardCharsets.UTF_8));
+            IOUtils.closeQuietly(gzip);
+            return Base64.encodeBase64String(obj.toByteArray());
+        } catch (IOException e){return "";}
+    }
+
+    public static String decompressString(String str){
+        try {
+            GZIPInputStream gis = new GZIPInputStream(new ByteArrayInputStream(Base64.decodeBase64(str)));
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(gis, StandardCharsets.UTF_8));
+            StringBuilder outStr = new StringBuilder();
+
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                outStr.append(line);
+            }
+            return outStr.toString();
+        } catch (Exception e){return "";}
+    }
 
     /**
      * replacement for system atan2 function.

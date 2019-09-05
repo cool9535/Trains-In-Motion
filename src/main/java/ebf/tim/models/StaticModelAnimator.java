@@ -2,7 +2,10 @@ package ebf.tim.models;
 
 import ebf.tim.entities.GenericRailTransport;
 import ebf.tim.utility.RailUtility;
+import fexcraft.fcl.common.lang.ArrayList;
 import fexcraft.tmt.slim.ModelRendererTurbo;
+
+import java.util.List;
 
 import static ebf.tim.utility.RailUtility.degreesF;
 
@@ -13,6 +16,15 @@ import static ebf.tim.utility.RailUtility.degreesF;
  * @author Eternal Blue Flame
  */
 public class StaticModelAnimator extends AnimationBase {
+
+    private static List<AnimationBase> customAnimators = makelist();
+    private static List<AnimationBase> makelist(){
+        List<AnimationBase> list = new ArrayList<>();
+        list.add(new StaticModelAnimator());
+        return list;
+    }
+    public static void addCustomAnimator(AnimationBase anim){customAnimators.add(anim);}
+
 
     /**tag for simple pistons, ones that move in a simple circle such as wheel connectors.*/
     public static final String tagSimplePiston = "simplepiston";
@@ -45,18 +57,17 @@ public class StaticModelAnimator extends AnimationBase {
     //todo: door types - swing, swing up, slide sideways, slide vertical(stair covers), slide out (retractable stairs).
 
     public static String tagSmoke(int id){
-        return "smoke 0 " + id;
+        return "smoke " + id;
     }
     public static String tagSteam(int id){
-        return "smoke 1 " + id;
+        return "steam " + id;
     }
 
     /**
-     * used to create an instance of this class.
+     * used to create an instance of the class, use this to store any variables from the model or transport before animation starts.
      * @param model a refrence to the model geometry to animate.
      */
-    public StaticModelAnimator init(ModelRendererTurbo model){
-        if(model==null || model.boxName==null){return null;}
+    public AnimationBase init(ModelRendererTurbo model, GenericRailTransport transport){
         switch (model.boxName) {
             case tagAdvancedPiston:
             case tagSimplePiston:
@@ -72,8 +83,27 @@ public class StaticModelAnimator extends AnimationBase {
     }
 
     /**
+     * returns true if the part being checked should be added to the animation list for the entity.
+     * when overriding, do not call the super method, it's unnecessary overhead.
+     * @param part the part to check
+     */
+    public boolean isPart(ModelRendererTurbo part){
+        if(part==null || part.boxName==null){return false;}
+        return RailUtility.stringContains(part.boxName,tagAdvancedPiston) ||
+                RailUtility.stringContains(part.boxName,tagSimplePiston) ||
+                RailUtility.stringContains(part.boxName,tagSimpleRotate) ||
+                RailUtility.stringContains(part.boxName,tagWheel) ||
+                RailUtility.stringContains(part.boxName,"smoke") ||
+                RailUtility.stringContains(part.boxName,"steam") ||
+                RailUtility.stringContains(part.boxName,"door") ||
+                RailUtility.stringContains(part.boxName,"lamp");
+    }
+
+
+    /**
      * Actually animate the geometry.
      * to add more animations override this and add your own checks before calling the super.
+     * when overriding, do not call the super method, it's unnecessary overhead.
      * @param rotationZ the rotation degree for the animation.
      */
     public void animate(float rotationZ, float[] pistonOffset, GenericRailTransport host){
@@ -107,5 +137,27 @@ public class StaticModelAnimator extends AnimationBase {
         }
     }
 
+
+    /*
+    Internal methods to iterate all animators when finding support for a specific part.
+     */
+    static AnimationBase initPart(ModelRendererTurbo part, GenericRailTransport entity){
+        if(part==null || part.boxName==null){return null;}
+        for(AnimationBase b : customAnimators){
+            if(b.isPart(part)){
+                return b.init(part, entity);
+            }
+        }
+        return null;
+    }
+
+    static boolean checkAnimators(ModelRendererTurbo part){
+        for (AnimationBase animator : customAnimators){
+            if(animator!=null && animator.isPart(part)){
+                return true;
+            }
+        }
+        return false;
+    }
 
 }

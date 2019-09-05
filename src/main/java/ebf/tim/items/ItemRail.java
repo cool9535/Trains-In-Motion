@@ -2,10 +2,10 @@ package ebf.tim.items;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import ebf.XmlBuilder;
 import ebf.tim.blocks.RailTileEntity;
 import ebf.tim.blocks.rails.BlockRailCore;
 import ebf.tim.utility.CommonProxy;
-import ebf.tim.utility.DebugUtil;
 import ebf.tim.utility.RailUtility;
 import mods.railcraft.api.core.items.ITrackItem;
 import net.minecraft.block.Block;
@@ -36,8 +36,10 @@ public class ItemRail extends Item implements ITrackItem {
      * Callback for item usage. If the item does something special on right clicking, he will have one of those. Return
      * True if something happen and false if it don't. This is for ITEMS, not BLOCKS
      */
+    @Deprecated
     @Override
     public boolean onItemUse(ItemStack stack, EntityPlayer player, World world, int x, int y, int z, int meta, float p_77648_8_, float p_77648_9_, float p_77648_10_) {
+        if(world.isRemote){return true;}
         net.minecraft.block.Block block = world.getBlock(x, y, z);
 
         if (block != Blocks.vine && block != Blocks.tallgrass && block != Blocks.deadbush) {
@@ -64,30 +66,29 @@ public class ItemRail extends Item implements ITrackItem {
                     if (world.getBlock(x,y,z) == getPlacedBlock()) {
                         getPlacedBlock().onBlockPlacedBy(world, x,y,z, player, stack);
                         getPlacedBlock().onPostBlockPlaced(world, x,y,z, i1);
+
+                        XmlBuilder c = new XmlBuilder();
+                        if(stack.getTagCompound().getTag("rail")!=null) {
+                            c.putItemStack("rail",ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("rail")));
+                        } else {
+                            c.putItemStack("rail", new ItemStack(Items.iron_ingot));
+                        }
+
+                        if(stack.getTagCompound().getTag("ties")!=null) {
+                            c.putItemStack("ties",ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("ties")));
+                        }
+                        if(stack.getTagCompound().getTag("ballast")!=null) {
+                            c.putItemStack("ballast",ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("ballast")));
+                        }
+                        if(stack.getTagCompound().getTag("wires")!=null) {
+                            c.putItemStack("wires",ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("wires")));
+                        }
+                        BlockRailCore.updateShape(x,y,z,world,c);
                     }
 
                     world.playSoundEffect(x + 0.5F, y + 0.5F, z + 0.5F, getPlacedBlock().stepSound.func_150496_b(), (getPlacedBlock().stepSound.getVolume() + 1.0F) / 2.0F, getPlacedBlock().stepSound.getPitch() * 0.8F);
                     --stack.stackSize;
                 }
-            }
-            if(world.getTileEntity(x,y,z) instanceof RailTileEntity && stack.hasTagCompound()){
-                if(stack.getTagCompound().getTag("rail")!=null) {
-                    ((RailTileEntity) world.getTileEntity(x,y,z)).rail = ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("rail"));
-                } else {
-                    ((RailTileEntity) world.getTileEntity(x,y,z)).rail = new ItemStack(Items.iron_ingot);
-                }
-                if(stack.getTagCompound().getTag("ties")!=null) {
-                    ((RailTileEntity) world.getTileEntity(x,y,z)).ties = ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("ties"));
-                }
-                if(stack.getTagCompound().getTag("ballast")!=null) {
-                    ((RailTileEntity) world.getTileEntity(x,y,z)).ballast = ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("ballast"));
-                }
-                if(stack.getTagCompound().getTag("wires")!=null) {
-                    ((RailTileEntity) world.getTileEntity(x,y,z)).wires = ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("wires"));
-                }
-                world.getTileEntity(x,y,z).markDirty();
-            } else if(stack.hasTagCompound()) {
-                System.out.println("Trains In Motion ERROR, TILE ENTITY NOT SPAWNED FAST ENOUGH, that can happen?");
             }
             return true;
         }
@@ -141,14 +142,14 @@ public class ItemRail extends Item implements ITrackItem {
 
             //todo: for some reason i ill never understand, the lang file returns ties and ballast backwards.
             if(stack.getTagCompound().hasKey("ballast")) {
-                stringList.add(RailUtility.translate("menu.ties")+ " " + ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("ballast")).getDisplayName());
-            } else {
-                stringList.add(RailUtility.translate("menu.noties"));
-            }
-            if(stack.getTagCompound().hasKey("ties")) {
-                stringList.add(RailUtility.translate("menu.ballast")+ " " + ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("ties")).getDisplayName());
+                stringList.add(RailUtility.translate("menu.ballast")+ " " + ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("ballast")).getDisplayName());
             } else {
                 stringList.add(RailUtility.translate("menu.noballast"));
+            }
+            if(stack.getTagCompound().hasKey("ties")) {
+                stringList.add(RailUtility.translate("menu.ties")+ " " + ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("ties")).getDisplayName());
+            } else {
+                stringList.add(RailUtility.translate("menu.noties"));
             }
 
             if(stack.getTagCompound().hasKey("wires")) {
@@ -195,18 +196,19 @@ public class ItemRail extends Item implements ITrackItem {
     }
 
     public static boolean isItemBanned(ItemStack s){
-        return s.getItem().delegate.name().contains("chisel") || Block.getBlockFromItem(s.getItem()).hasTileEntity(s.getItemDamage());
+        return RailUtility.stringContains(s.getItem().delegate.name(),"chisel") || Block.getBlockFromItem(s.getItem()).hasTileEntity(s.getItemDamage());
     }
 
     //adds custom versions of this to the creative menu, with the necessary NBT and metadata
     @SideOnly(Side.CLIENT)
     public void getSubItems(Item p_150895_1_, CreativeTabs p_150895_2_, List tabItems) {
         if(p_150895_1_ instanceof ItemRail) {
-            tabItems.add(setStackData(new ItemStack(p_150895_1_), new ItemStack(Items.iron_ingot), new ItemStack(Blocks.log), new ItemStack(Blocks.gravel),null));
-            tabItems.add(setStackData(new ItemStack(p_150895_1_), new ItemStack(Items.iron_ingot), new ItemStack(Blocks.planks), new ItemStack(Blocks.gravel), null));
-            tabItems.add(setStackData(new ItemStack(p_150895_1_), new ItemStack(Items.iron_ingot), null, new ItemStack(Blocks.gravel),null));
-            tabItems.add(setStackData(new ItemStack(p_150895_1_), new ItemStack(Items.iron_ingot), null, new ItemStack(Blocks.stone), null));
-            tabItems.add(setStackData(new ItemStack(p_150895_1_), new ItemStack(Items.iron_ingot), null, null, null));
+            for(Item ingot : new Item[]{Items.iron_ingot, Items.gold_ingot}){
+                for(Block b : new Block[]{null, Blocks.gravel, Blocks.stone}){
+                    for(Block t : new Block[]{Blocks.log, Blocks.planks, Blocks.double_stone_slab, null})
+                    tabItems.add(setStackData(new ItemStack(p_150895_1_),new ItemStack(ingot), new ItemStack(b),new ItemStack(t), null));
+                }
+            }
         } else {
             tabItems.add(new ItemStack(p_150895_1_));
         }

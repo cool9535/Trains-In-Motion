@@ -13,6 +13,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 
+import java.util.List;
 import java.util.UUID;
 
 import static ebf.tim.utility.RailUtility.DefineStack;
@@ -42,7 +43,7 @@ public class EntityPullmansPalace extends RollingstockBase {
 
     @Override
     public float[][] bogieModelOffsets() {
-        return new float[][]{{2,0,0},{-2,0,0}};
+        return null;
     }
 
     @Override
@@ -83,7 +84,7 @@ public class EntityPullmansPalace extends RollingstockBase {
     }
 
     @Override
-    public String[] getTankFilters(int tankID) {
+    public String[][] getTankFilters() {
         return null;
     }
 
@@ -170,7 +171,7 @@ public class EntityPullmansPalace extends RollingstockBase {
      * <h2>Type</h2>
      */
     @Override
-    public TrainsInMotion.transportTypes getType(){return TrainsInMotion.transportTypes.PASSENGER;}
+    public List<TrainsInMotion.transportTypes> getTypes(){return TrainsInMotion.transportTypes.PASSENGER.singleton();}
     /**
      * <h2>Rider offsets</h2>
      */
@@ -179,7 +180,7 @@ public class EntityPullmansPalace extends RollingstockBase {
 
     @Override
     public float[] getHitboxSize() {
-        return new float[]{5,2,1.5f};
+        return new float[]{6.25f,2,1.5f};
     }
 
     @Override
