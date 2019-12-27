@@ -60,7 +60,8 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
      * <h2>variables</h2>
      */
     /**defines the colors, the outer array is for each different color, and the inner int[] is for the RGB color*/
-    public List<Integer> colors = new ArrayList<>();
+    public List<Integer> colorsFrom = new ArrayList<>();
+    public List<Integer> colorsTo = new ArrayList<>();
     /**the server-sided persistent UUID of the owner*/
     private UUID owner = null;
     /**the front entity bogie*/
@@ -115,6 +116,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
     float rotationRoll;
     public int forceBackupTimer =0;
     public float pullingWeight=0;
+    public boolean onVanillaRails=false;
 
     //@SideOnly(Side.CLIENT)
     public TransportRenderData renderData = new TransportRenderData();
@@ -195,14 +197,14 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
         this.dataWatcher.addObject(13, 0);//train fuel consumption current
         this.dataWatcher.addObject(20, "");//fluid tank data
         this.dataWatcher.addObject(15, 0);//train heat
+        this.dataWatcher.addObject(16, 40.0f);//train heat
         this.dataWatcher.addObject(17, bools!=null?bools.toInt():BitList.newInt());//booleans
         //18 is used by EntityTrainCore
         //19 is used by the core minecart
         this.dataWatcher.addObject(23, "");//owner
         this.dataWatcher.addObject(21, 0);//front linked transport
         this.dataWatcher.addObject(22, 0);//back linked transport
-        ResourceLocation s = SkinRegistry.getDefaultTexture(this, null, false);
-        this.dataWatcher.addObject(24, s==null?"":s.getResourceDomain()+":"+s.getResourcePath());//currently used
+        this.dataWatcher.addObject(24,getDefaultSkin());//currently used
     }
 
     /**
@@ -458,6 +460,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
         }
         return false;
     }
+
     public void setDead() {
         super.setDead();
         //remove bogies
@@ -567,7 +570,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
         if(SkinRegistry.getSkin(this, null, false,skin)!=null) {
             dataWatcher.updateObject(24, skin);
         } else {
-            dataWatcher.updateObject(24, SkinRegistry.getDefaultTexture(this, null, false));
+            dataWatcher.updateObject(24, this.getDefaultSkin());
         }
 
 
@@ -672,9 +675,9 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
     public boolean hasDrag(){return true;}
 
     public void updatePosition(){
-        frontBogie.minecartMove(rotationPitch, rotationYaw, hasDrag(), getBoolean(boolValues.BRAKE),
+        frontBogie.minecartMove(this, hasDrag(), getBoolean(boolValues.BRAKE),
                 weightKg() * (frontBogie.isOnSlope?1.5f:1) * (backBogie.isOnSlope?2:1));
-        backBogie.minecartMove(rotationPitch, rotationYaw, hasDrag(), getBoolean(boolValues.BRAKE),
+        backBogie.minecartMove(this, hasDrag(), getBoolean(boolValues.BRAKE),
                 weightKg() * (frontBogie.isOnSlope?1.5f:1) * (backBogie.isOnSlope?2:1));
         motionX = frontVelocityX = frontBogie.motionX;
         motionZ = frontVelocityZ = frontBogie.motionZ;
@@ -786,12 +789,18 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
             }
             updatePosition();
 
-            if (ticksExisted %2 ==0) {
-                //align bogies
-                vectorCache[0] = rotatePointF(bogieLengthFromCenter()[0], 0, 0, rotationPitch, rotationYaw, 0.0f);
-                frontBogie.setPosition(vectorCache[0][0] + posX, frontBogie.posY, vectorCache[0][2] + posZ);
-                vectorCache[0] = rotatePointF(bogieLengthFromCenter()[1], 0, 0, rotationPitch, rotationYaw, 0.0f);
-                backBogie.setPosition(vectorCache[0][0] + posX, backBogie.posY, vectorCache[0][2] + posZ);
+
+            if(ticksExisted%5==0) {
+                double[] v = RailUtility.rotatePoint(bogieLengthFromCenter()[0], 0, rotationYaw);
+                frontBogie.addVelocity(
+                        ((backBogie.posX - posX)-v[0])*0.001,
+                        0,
+                        ((backBogie.posZ - posZ)-v[2])*0.001);
+                v = RailUtility.rotatePoint(bogieLengthFromCenter()[1], 0, rotationYaw);
+                frontBogie.addVelocity(
+                        ((frontBogie.posX - posX)-v[0])*0.001,
+                        0,
+                        ((frontBogie.posZ - posZ)-v[2])*0.001);
             }
         }
 
@@ -1143,15 +1152,11 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
      *     or we could move to some form of ordered map, although that would damage normal render performance.
      * @param viewer
      * @param isPaintBucket
-     * @param skinIndex
+     * @param skinId
      * @return
      */
-    public skin getTextureByIndex(EntityPlayer viewer, boolean isPaintBucket, int skinIndex){
-        Iterator<skin> s =getSkinList(viewer, isPaintBucket).values().iterator();
-        for(int i=0;i<skinIndex;i++){
-            s.next();
-        }
-        return s.next();
+    public skin getTextureByID(EntityPlayer viewer, boolean isPaintBucket, String skinId){
+        return getSkinList(viewer, isPaintBucket).get(skinId);
     }
 
     /**
@@ -1165,6 +1170,12 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
     public Map<String, skin> getSkinList(EntityPlayer viewer, boolean isPaintBucket){
         return SkinRegistry.getTransportSkins(getClass());
     }
+
+    /**
+     * return the name for the default skin of the transport.
+     */
+    public String getDefaultSkin(){
+        return getSkinList(null,false)==null?"":getSkinList(null, false).keySet().iterator().next();}
 
     public List<ParticleFX> getParticles(){
         return renderData.particles;
@@ -1313,7 +1324,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
      */
     public void addItem(ItemStack item){
         for(ItemStackSlot slot : inventory){
-            item = slot.mergeStack(item);
+            item = slot.mergeStack(this, inventory,item);
             if (item == null){
                 return;
             }
@@ -1605,7 +1616,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
 
     @SideOnly(Side.CLIENT)
     public Bogie[] bogies(){
-        if(bogieModelOffsets()==null){return null;}
+        if(bogieModelOffsets()==null || bogieModels()==null){return null;}
         Bogie[] ret = new Bogie[bogieModelOffsets().length];
         for(int i=0; i<bogieModelOffsets().length;i++){
             if(i>=bogieModels().length){
@@ -1630,6 +1641,9 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
 
     /**defines the scale to render the model at. Default is 0.0625*/
     public float getRenderScale(){return 0.0625f;}
+
+    /**defines the scale to render the model at. Default is 0.65*/
+    public float getPlayerScale(){return 0.65f;}
 
     /**returns the x/y/z offset each model should render at, with 0 being the entity center, in order with getModels
      * example:
@@ -1729,15 +1743,14 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
      */
     @SideOnly(Side.CLIENT)
     public int[] getParticleData(int id){
-        //DebugUtil.println(id);
         switch (id){
             case 0:{return new int[]{3, 100, 0x232323};}//smoke
             case 1:{return new int[]{5, 100, 0x232323};}//heavy smoke
             case 2:{return new int[]{2, 100, 0xEEEEEE};}//steam
             case 3:{return new int[]{6, 100, 0xCECDCB};}//led lamp
             case 4:{return new int[]{3, 50, 0xCC0000};}//reverse lamp
-            case 5:{return new int[]{3, 50, 0xCCCC00};}//small sphere lamp
-            default:{return new int[]{6, 100, 0xCCCC00};}//lamp
+            case 5:{return new int[]{3, 10, 0xCCCC00};}//small sphere lamp
+            default:{return new int[]{5, 100, 0xCCCC00};}//lamp
         }
     }
 
@@ -1775,7 +1788,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
     public float transportMetricHorsePower(){return 0;}
 
     /**additional lore for the item, each entry in the array is a new line.
-     * may return null.*/
+     * return null if unused.*/
     public String[] additionalItemText(){return null;}
 
     /**returns the item of this transport, this should be a static value in the transport's class.

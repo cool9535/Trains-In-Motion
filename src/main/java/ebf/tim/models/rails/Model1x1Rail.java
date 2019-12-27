@@ -1,9 +1,11 @@
 package ebf.tim.models.rails;
 
+import ebf.tim.blocks.rails.BlockRailCore;
 import ebf.tim.blocks.rails.RailShapeCore;
 import ebf.tim.utility.ClientProxy;
 import ebf.tim.utility.DebugUtil;
 import ebf.tim.utility.Vec5f;
+import ebf.tim.utility.Vec6f;
 import fexcraft.tmt.slim.Tessellator;
 import fexcraft.tmt.slim.TextureManager;
 import net.minecraft.client.Minecraft;
@@ -55,17 +57,12 @@ public class Model1x1Rail {
         }*/
     }
 
-    public static void addVertexWithOffset(Vec5f p, float width, float height, float depth){
-        rotateVertexPoint(depth,height,width,p.u,p.v);
+    public static void addVertexWithOffset(Vec6f p, float width, float height, float depth){
+        rotateVertexPoint(depth,height,width-Math.copySign(p.w,width),p.u,p.v);
         Tessellator.getInstance().addVertexWithUV(vert[0]+p.xCoord,vert[1]+p.yCoord, vert[2]+p.zCoord,0,0);
     }
 
     public static void addVertexWithOffsetAndUV(Vec5f p, float width, float height, float depth, float U, float V){
-        rotateVertexPoint(depth,height,width,p.u,p.v);
-        Tessellator.getInstance().addVertexWithUV(vert[0]+p.xCoord,vert[1]+p.yCoord, vert[2]+p.zCoord,U,V);
-    }
-
-    public static void addTieVertexWithOffsetAndUV(Vec5f p, float width, float height, float depth, float U, float V){
         rotateVertexPoint(depth,height,width,p.u,p.v);
         Tessellator.getInstance().addVertexWithUV(vert[0]+p.xCoord,vert[1]+p.yCoord, vert[2]+p.zCoord,U,V);
     }
@@ -93,7 +90,6 @@ public class Model1x1Rail {
         } else{
             minWidth=shape.getGaugePositions()[0];maxWidth=-shape.getGaugePositions()[0];
         }
-        //DebugUtil.println(minWidth,maxWidth);
 
 
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
@@ -115,12 +111,14 @@ public class Model1x1Rail {
         }
         //DebugUtil.println(ClientProxy.railLoD);
         //renders the rails, also defines min and max width
+        GL11.glPushMatrix();
         switch (ClientProxy.railSkin){
             case 0:{ModelRail.modelPotatoRail(shape, colors); break;}
             case 1:{ModelRail.modelExtrudedRail(shape, colors); break;}
             case 2://todo normal rail
             case 3:{ModelRail.model3DRail(shape, colors); break;}//todo HD rail
         }
+        GL11.glPopMatrix();
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glColor4f(1.0f,1.0f,1.0f,1.0f);
         Tessellator.bindTexture(TextureMap.locationBlocksTexture);
@@ -136,12 +134,12 @@ public class Model1x1Rail {
 
         if(ties!=null && ties.getItem()!=null) {
             if(ClientProxy.railSkin==0){
-                ModelTies.modelPotatoTies(shape, maxWidth, minWidth, ties);
+                ModelTies.modelPotatoTies(BlockRailCore.getShape(world,xPos,yPos,zPos), maxWidth, minWidth, ties);
             } else if (ClientProxy.railSkin<3){
-                ModelTies.model3DTies(shape, maxWidth, minWidth, ties);
+                ModelTies.model3DTies(BlockRailCore.getShape(world,xPos,yPos,zPos), maxWidth, minWidth, ties);
             } else {
                 //todo: HD ties
-                ModelTies.model3DTies(shape, maxWidth, minWidth, ties);
+                ModelTies.model3DTies(BlockRailCore.getShape(world,xPos,yPos,zPos), maxWidth, minWidth, ties);
             }
 
         }

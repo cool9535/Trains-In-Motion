@@ -1,14 +1,14 @@
 package ebf.timsquared.entities.rollingstock;
 
-import ebf.timsquared.TiMSquared;
 import ebf.tim.TrainsInMotion;
 import ebf.tim.api.RollingstockBase;
 import ebf.tim.api.SkinRegistry;
-import ebf.timsquared.entities.trains.EntityBrigadelok080;
 import ebf.tim.items.ItemTransport;
+import ebf.tim.utility.FuelHandler;
+import ebf.timsquared.TiMSquared;
+import ebf.timsquared.entities.trains.EntityBrigadelok080;
 import ebf.timsquared.models.bogies.CMDBogie;
 import ebf.timsquared.models.rollingstock.ModelGATX1300GallonTanker;
-import ebf.tim.utility.FuelHandler;
 import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
@@ -46,7 +46,7 @@ public class EntityGTAX13000GallonTanker extends RollingstockBase {
 
     @Override
     public float[][] bogieModelOffsets() {
-        return new float[][]{{2.1f,0,0},{-2.1f,0,0}};
+        return new float[][]{{5.1f,0,0},{-5.1f,0,0}};
     }
 
     @Override
@@ -55,7 +55,7 @@ public class EntityGTAX13000GallonTanker extends RollingstockBase {
     }
 
     @Override
-    public float[] bogieLengthFromCenter(){return new float[]{2,-2};}
+    public float[] bogieLengthFromCenter(){return new float[]{5,-5};}
 
     @Override
     public float getRenderScale() {

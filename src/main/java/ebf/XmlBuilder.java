@@ -1,8 +1,6 @@
 package ebf;
 
 import cpw.mods.fml.common.registry.GameData;
-import cpw.mods.fml.common.registry.GameRegistry;
-import ebf.tim.utility.DebugUtil;
 import ebf.tim.utility.RailUtility;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
@@ -11,7 +9,6 @@ import net.minecraft.item.ItemStack;
 import java.util.HashMap;
 
 //Cant cover Object. it's raw data isn't safe over networking due to runtime compiling differences on client and server.
-//todo: rename to NBTEnhanced
 public class XmlBuilder {
     public HashMap<String, XmlBuilder> xmlMap = new HashMap<>();
     public HashMap<String, Integer> intMap = new HashMap<>();
@@ -172,12 +169,15 @@ public class XmlBuilder {
         }
         for(String key : itemMap.keySet()){
             tag(key, data, "item");
-            data.append(itemMap.get(key)[0]);
-            data.append(",");
-            data.append(itemMap.get(key)[1]);
-            data.append(",");
-            data.append(itemMap.get(key)[2]);
-
+            if(itemMap.get(key) == null || itemMap.get(key)[0].equals("null")){
+                data.append("null");
+            } else {
+                data.append(itemMap.get(key)[0]);
+                data.append(",");
+                data.append(itemMap.get(key)[1]);
+                data.append(",");
+                data.append(itemMap.get(key)[2]);
+            }
             tag(key, data);
         }
 

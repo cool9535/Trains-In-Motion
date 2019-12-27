@@ -1,72 +1,50 @@
 package fexcraft.tmt.slim;
 
-import ebf.tim.utility.DebugUtil;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
-
-import static org.lwjgl.opengl.GL11.glGetError;
+import java.util.List;
 
 
 public class TexturedPolygon {
 
-	public PositionTransformVertex[] vertices;
-	
-	public TexturedPolygon(PositionTransformVertex apositionTexturevertex[]){
+
+	public List<PositionTransformVertex> vertices;
+
+	public TexturedPolygon(List<PositionTransformVertex> apositionTexturevertex){
 		vertices = apositionTexturevertex;
-    }
-
-	/**
-	 * function disabled, normals aren't needed anymore
-	 */
-	@Deprecated
-	public void setInvertNormal(boolean isSet){ }
-
-	/**
-	 * function disabled, normals aren't needed anymore
-	 */
-	@Deprecated
-	public void setNormals(float x, float y, float z){ }
-
-	/**
-	 * function disabled, normals aren't needed anymore
-	 */
-	@Deprecated
-	public void setNormals(ArrayList<Vec3f> iNormal){ }
+	}
 
 	public void draw(float f){
+		if(vertices.size()==3){
+			Tessellator.getInstance().startDrawing(GL11.GL_TRIANGLES);
+			Tessellator.setNormal(vertices.get(0).vector3F, vertices.get(1).vector3F,vertices.get(2).vector3F);
+		} else {
+			Tessellator.getInstance().startDrawing(vertices.size()==4?GL11.GL_QUADS:GL11.GL_POLYGON);
 
-		DebugUtil.printGLError(glGetError());
-		switch (vertices.length){
-			case 3:{
-				Tessellator.getInstance().startDrawing(GL11.GL_TRIANGLES);
-				break;
-			}
-			case 4:{
-				Tessellator.getInstance().startDrawing(GL11.GL_QUADS);
-				break;
-			}
-			default:{
-				Tessellator.getInstance().startDrawing(GL11.GL_POLYGON);
+			if(vertices.get(0)==vertices.get(1) || vertices.get(1)==vertices.get(2)){
+				Tessellator.setNormal(vertices.get(1).vector3F, vertices.get(2).vector3F, vertices.get(3).vector3F);
+			} else {
+				Tessellator.setNormal(vertices.get(0).vector3F, vertices.get(1).vector3F, vertices.get(2).vector3F);
 			}
 		}
-
-        for (PositionTransformVertex positionTexturevertex : vertices){
-        	Tessellator.getInstance().addVertexWithUV(positionTexturevertex.vector3F.xCoord * f, positionTexturevertex.vector3F.yCoord * f, positionTexturevertex.vector3F.zCoord * f, positionTexturevertex.textureX, positionTexturevertex.textureY);
+		
+		for (PositionTransformVertex positionTexturevertex : vertices){
+			Tessellator.getInstance().addVertexWithUV(positionTexturevertex.vector3F.xCoord * f, positionTexturevertex.vector3F.yCoord * f, positionTexturevertex.vector3F.zCoord * f, positionTexturevertex.textureX, positionTexturevertex.textureY);
 		}
-		DebugUtil.printGLError(glGetError());
-		Tessellator.getInstance().arrayEnabledDraw();
-    }
+		Tessellator.getInstance().draw();
+	}
 
 
-	public void flipFace() {
-		PositionTransformVertex[] apositiontexturevertex = new PositionTransformVertex[this.vertices.length];
+	public TexturedPolygon flipFace() {
+		List<PositionTransformVertex> apositiontexturevertex = new ArrayList<>();
 
-		for (int i = 0; i < this.vertices.length; ++i) {
-			apositiontexturevertex[i] = this.vertices[this.vertices.length - i - 1];
+		for (int i = 0; i < this.vertices.size(); ++i) {
+			apositiontexturevertex.add(this.vertices.get(this.vertices.size() - i - 1));
 		}
 
 		this.vertices = apositiontexturevertex;
+		return this;
 	}
 
 }

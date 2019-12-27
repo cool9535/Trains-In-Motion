@@ -1,6 +1,11 @@
 package ebf.tim.utility;
 
+import ebf.XmlBuilder;
 import net.minecraft.item.ItemStack;
+
+import java.util.ArrayList;
+import java.util.List;
+
 
 public class Recipe {
 
@@ -44,6 +49,13 @@ public class Recipe {
 
     public ItemStack[] getresult(){return items[9];}
 
+    public ItemStack[][] getItems() {
+        return items;
+    }
+
+    public ItemStack[][] getRecipeItems() {
+        return new ItemStack[][]{items[0],items[1],items[2],items[3],items[4],items[5],items[6],items[7],items[8]};
+    }
 
     public void nextDisplayItem(){
         for(int i=0;i<10;i++) {
@@ -62,6 +74,37 @@ public class Recipe {
                 items[6][displayItem[6]],items[7][displayItem[7]],items[8][displayItem[8]],
                 items[9][displayItem[9]]
         };
+    }
+
+    public String saveRecipe(){
+        XmlBuilder xml = new XmlBuilder();
+        int ii;
+        for (int i=0;i<10;i++){
+            ii=0;
+            XmlBuilder slot = new XmlBuilder();
+            for(ItemStack s : items[i]){
+                slot.putItemStack("variant "+ii,s);
+                ii++;
+            }
+            xml.putXml("slot " +i, slot);
+        }
+        return xml.toXMLString();
+    }
+
+    public Recipe loadRecipe(String s){
+        XmlBuilder xml = new XmlBuilder(s);
+        for (int i=0;i<10;i++){
+            List<ItemStack> list=new ArrayList<>();
+
+            XmlBuilder builder = xml.getXml("slot "+i);
+            for(String stack : builder.itemMap.keySet()) {
+                list.add(builder.getItemStack(stack));
+            }
+            items[i]=list.toArray(new ItemStack[]{});
+
+        }
+
+        return this;
     }
 
 }

@@ -7,6 +7,9 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.network.NetworkRegistry;
+import cpw.mods.fml.common.network.simpleimpl.IMessage;
+import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
+import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
@@ -18,6 +21,7 @@ import ebf.tim.items.ItemAdminBook;
 import ebf.tim.items.ItemCraftGuide;
 import ebf.tim.items.TiMTab;
 import ebf.tim.networking.PacketInteract;
+import ebf.tim.networking.PacketPaint;
 import ebf.tim.networking.PacketRemove;
 import ebf.tim.registry.TiMGenericRegistry;
 import ebf.tim.utility.ChunkHandler;
@@ -44,6 +48,11 @@ import java.util.List;
  */
 @Mod(modid = TrainsInMotion.MODID, version = TrainsInMotion.MOD_VERSION, name = "Trains in Motion")
 public class TrainsInMotion {
+
+    /*
+    Note for laziness: gradle deobfuscator is located at:
+    %user%/.gradle/caches/minecraft/net/minecraftforge/forge/1.7.10-10.13.4.1558-1.7.10/unpacked/conf/
+     */
 
     /**the ID of the mod and the version displayed in game, as well as used for version check in the version.txt file*/
     public static final String MODID = "trainsinmotion";
@@ -109,7 +118,7 @@ public class TrainsInMotion {
         proxy.loadConfig(event);
         ForgeChunkManager.setForcedChunkLoadingCallback(TrainsInMotion.instance, chunkHandler);
         MinecraftForge.EVENT_BUS.register(chunkHandler);
-        creativeTab=new TiMTab(event.getSide().isClient(),"Trains in Motion", MODID, "TiM");
+        creativeTab=new TiMTab("Trains in Motion", MODID, "TiM");
 
         ItemCraftGuide.modInfoPages.put(MODID, "Trains in Motion\nCreator/Dev: Eternal Blue Flame\nArtist: Lunar Tales\n"+
                 "\nHonorable mentions\nfor helping development:\nFerdinand, Zora no Densha\ncam27cam, MothershipQ\n" +
@@ -133,18 +142,21 @@ public class TrainsInMotion {
         cpw.mods.fml.common.registry.EntityRegistry.registerModEntity(EntitySeat.class, "Seat", 16, TrainsInMotion.instance, 60, 2, true);
 
         if(event.getSide().isClient()){
-            GUICraftBook.infoPages.put(MODID, new String[]{"TRAINS IN MOTION\nBy Eternal Blue Flame\nAdditional credit to Fexcraft", "PAGE 2 OF INfO GARBAGE"});
+            GUICraftBook.addPage(MODID, "TRAINS IN MOTION\nBy Eternal Blue Flame\nAdditional credit to Fexcraft");
+            GUICraftBook.addPage(MODID, "PAGE 2 OF INfO GARBAGE");
         }
 
 
 
         //register the networking instances and channels
         TrainsInMotion.keyChannel = NetworkRegistry.INSTANCE.newSimpleChannel("TiM.key");
-        TrainsInMotion.keyChannel.registerMessage(PacketInteract.Handler.class, PacketInteract.class, 1, Side.SERVER);
-        TrainsInMotion.keyChannel.registerMessage(PacketRemove.Handler.class, PacketRemove.class, 2, Side.SERVER);
-        TrainsInMotion.keyChannel.registerMessage(ItemAdminBook.PacketAdminBook.Handler.class, ItemAdminBook.PacketAdminBook.class, 3, Side.CLIENT);
-        TrainsInMotion.keyChannel.registerMessage(ItemAdminBook.PacketAdminBookClient.Handler.class, ItemAdminBook.PacketAdminBookClient.class, 4, Side.SERVER);
+        TrainsInMotion.keyChannel.registerMessage(HANDLERS[0], PacketInteract.class, 1, Side.SERVER);
+        TrainsInMotion.keyChannel.registerMessage(HANDLERS[1], PacketRemove.class, 2, Side.SERVER);
+        TrainsInMotion.keyChannel.registerMessage(HANDLERS[2], ItemAdminBook.PacketAdminBook.class, 3, Side.CLIENT);
+        TrainsInMotion.keyChannel.registerMessage(HANDLERS[3], ItemAdminBook.PacketAdminBookClient.class, 4, Side.SERVER);
+        TrainsInMotion.keyChannel.registerMessage(HANDLERS[4], PacketPaint.class, 6, Side.CLIENT);
         TrainsInMotion.trackChannel = NetworkRegistry.INSTANCE.newSimpleChannel("TiM.track");
+
 
         proxy.register();
         //register the worldgen
@@ -166,4 +178,24 @@ public class TrainsInMotion {
     public void postinit(FMLPostInitializationEvent event) {
         TiMGenericRegistry.endRegistration();
     }
+
+
+
+    private static final IMessageHandler[] HANDLERS = new IMessageHandler[]{
+            new IMessageHandler<IMessage, IMessage>() {
+                @Override public IMessage onMessage(IMessage message, MessageContext ctx) {return null;}
+            },
+            new IMessageHandler<IMessage, IMessage>() {
+                @Override public IMessage onMessage(IMessage message, MessageContext ctx) {return null;}
+            },
+            new IMessageHandler<IMessage, IMessage>() {
+                @Override public IMessage onMessage(IMessage message, MessageContext ctx) {return null;}
+            },
+            new IMessageHandler<IMessage, IMessage>() {
+                @Override public IMessage onMessage(IMessage message, MessageContext ctx) {return null;}
+            },
+            new IMessageHandler<IMessage, IMessage>() {
+                @Override public IMessage onMessage(IMessage message, MessageContext ctx) {return null;}
+            }
+    };
 }

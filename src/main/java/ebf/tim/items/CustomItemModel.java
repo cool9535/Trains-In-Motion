@@ -86,7 +86,8 @@ public class CustomItemModel implements IItemRenderer /*ICustomModelLoader*/ {
                 }
 
             }
-            ClientProxy.transportRenderer.doRender(((ItemTransport)item.getItem()).entity,0,0,0,0,0, true);
+            ClientProxy.transportRenderer.doRender(
+                    ((ItemTransport)item.getItem()).entity,0,0,0,0,0, true, null);
             GL11.glPopMatrix();
         } else if (item.getItem() instanceof ItemRail){
             GL11.glPushMatrix();
@@ -112,7 +113,7 @@ public class CustomItemModel implements IItemRenderer /*ICustomModelLoader*/ {
                 addVertexWithOffsetAndUV(end, 0.625f, 0, 0, iicon.getMaxU(), iicon.getMinV());
                 addVertexWithOffsetAndUV(end, -0.625f, 0, 0, iicon.getMaxU(), iicon.getMaxV());
 
-                Tessellator.getInstance().arrayEnabledDraw();
+                Tessellator.getInstance().draw();
             }
 
             if(item.getTagCompound().hasKey("ties")) {
@@ -126,28 +127,28 @@ public class CustomItemModel implements IItemRenderer /*ICustomModelLoader*/ {
                 addVertexWithOffsetAndUV(tieStart, -0.625f, 0, 0, iicon.getMinU(), iicon.getMaxV());
                 addVertexWithOffsetAndUV(tieEnd, 0.625f, 0, 0, iicon.getMaxU(), iicon.getMinV());
                 addVertexWithOffsetAndUV(tieEnd, -0.625f, 0, 0, iicon.getMaxU(), iicon.getMaxV());
-                Tessellator.getInstance().arrayEnabledDraw();
+                Tessellator.getInstance().draw();
                 GL11.glTranslatef(0.3f,0,0);
                 Tessellator.getInstance().startDrawing(GL11.GL_QUAD_STRIP);
                 addVertexWithOffsetAndUV(tieStart, 0.625f, 0, 0, iicon.getMinU(), iicon.getMinV());
                 addVertexWithOffsetAndUV(tieStart, -0.625f, 0, 0, iicon.getMinU(), iicon.getMaxV());
                 addVertexWithOffsetAndUV(tieEnd, 0.625f, 0, 0, iicon.getMaxU(), iicon.getMinV());
                 addVertexWithOffsetAndUV(tieEnd, -0.625f, 0, 0, iicon.getMaxU(), iicon.getMaxV());
-                Tessellator.getInstance().arrayEnabledDraw();
+                Tessellator.getInstance().draw();
                 GL11.glTranslatef(0.3f,0,0);
                 Tessellator.getInstance().startDrawing(GL11.GL_QUAD_STRIP);
                 addVertexWithOffsetAndUV(tieStart, 0.625f, 0, 0, iicon.getMinU(), iicon.getMinV());
                 addVertexWithOffsetAndUV(tieStart, -0.625f, 0, 0, iicon.getMinU(), iicon.getMaxV());
                 addVertexWithOffsetAndUV(tieEnd, 0.625f, 0, 0, iicon.getMaxU(), iicon.getMinV());
                 addVertexWithOffsetAndUV(tieEnd, -0.625f, 0, 0, iicon.getMaxU(), iicon.getMaxV());
-                Tessellator.getInstance().arrayEnabledDraw();
+                Tessellator.getInstance().draw();
                 GL11.glTranslatef(0.3f,0,0);
                 Tessellator.getInstance().startDrawing(GL11.GL_QUAD_STRIP);
                 addVertexWithOffsetAndUV(tieStart, 0.625f, 0, 0, iicon.getMinU(), iicon.getMinV());
                 addVertexWithOffsetAndUV(tieStart, -0.625f, 0, 0, iicon.getMinU(), iicon.getMaxV());
                 addVertexWithOffsetAndUV(tieEnd, 0.625f, 0, 0, iicon.getMaxU(), iicon.getMinV());
                 addVertexWithOffsetAndUV(tieEnd, -0.625f, 0, 0, iicon.getMaxU(), iicon.getMaxV());
-                Tessellator.getInstance().arrayEnabledDraw();
+                Tessellator.getInstance().draw();
 
                 GL11.glPopMatrix();
             }
@@ -172,7 +173,7 @@ public class CustomItemModel implements IItemRenderer /*ICustomModelLoader*/ {
                 addVertexWithOffsetAndUV(start, -0.4f, 0, 0, 0,0);
                 addVertexWithOffsetAndUV(end, -0.3f, 0, 0, 0,0);
                 addVertexWithOffsetAndUV(end, -0.4f, 0, 0, 0, 0);
-                Tessellator.getInstance().arrayEnabledDraw();
+                Tessellator.getInstance().draw();
 
                 ModelRail.centerShading(-0.4f,color,30,false);
                 Tessellator.getInstance().startDrawing(GL11.GL_QUAD_STRIP);
@@ -180,7 +181,7 @@ public class CustomItemModel implements IItemRenderer /*ICustomModelLoader*/ {
                 addVertexWithOffsetAndUV(start, -0.3f, 0, 0, 0,0);
                 addVertexWithOffsetAndUV(end, -0.2f, 0, 0, 0,0);
                 addVertexWithOffsetAndUV(end, -0.3f, 0, 0, 0, 0);
-                Tessellator.getInstance().arrayEnabledDraw();
+                Tessellator.getInstance().draw();
 
                 ModelRail.centerShading(0.4f,color,30,true);
                 Tessellator.getInstance().startDrawing(GL11.GL_QUAD_STRIP);
@@ -188,7 +189,7 @@ public class CustomItemModel implements IItemRenderer /*ICustomModelLoader*/ {
                 addVertexWithOffsetAndUV(start, 0.4f, 0, 0, 0,0);
                 addVertexWithOffsetAndUV(end, 0.5f, 0, 0, 0,0);
                 addVertexWithOffsetAndUV(end, 0.4f, 0, 0, 0, 0);
-                Tessellator.getInstance().arrayEnabledDraw();
+                Tessellator.getInstance().draw();
 
                 ModelRail.centerShading(0.4f,color,30,false);
                 Tessellator.getInstance().startDrawing(GL11.GL_QUAD_STRIP);
@@ -196,7 +197,7 @@ public class CustomItemModel implements IItemRenderer /*ICustomModelLoader*/ {
                 addVertexWithOffsetAndUV(start, 0.3f, 0, 0, 0,0);
                 addVertexWithOffsetAndUV(end, 0.4f, 0, 0, 0,0);
                 addVertexWithOffsetAndUV(end, 0.3f, 0, 0, 0, 0);
-                Tessellator.getInstance().arrayEnabledDraw();
+                Tessellator.getInstance().draw();
                 GL11.glEnable(GL_TEXTURE_2D);
                 GL11.glPopMatrix();
             }

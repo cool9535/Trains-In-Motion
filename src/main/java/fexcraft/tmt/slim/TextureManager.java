@@ -5,59 +5,74 @@ import ebf.tim.utility.ClientProxy;
 import ebf.tim.utility.DebugUtil;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.client.renderer.texture.SimpleTexture;
-import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraftforge.oredict.OreDictionary;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+import sun.awt.image.InputStreamImageSource;
+import sun.awt.image.PNGImageDecoder;
 
-import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.nio.FloatBuffer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
-import static org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE;
 
 public class TextureManager {
 
 
     public static ByteBuffer renderPixels = ByteBuffer.allocateDirect((4096*4096)*4);
-    private static int i, length, skyLight;
-    private static int[] RGBint, pixels;
-    private static final byte fullAlpha=(byte)0;
-    private static Set MCResourcePacks;
+    private static int  skyLight;
+    private static Set<?> MCResourcePacks;
+    public static Map<String, Integer> tmtBoundTextures = new HashMap<>();
+    private static Integer currentKey;
 
     public static Map<ItemStack,int[]> ingotColors = new HashMap<>();
 
 
     private static Map<ResourceLocation, Integer> tmtMap = new HashMap<>();
 
-    private static Map<ResourceLocation, int[]> tmtTextureMap = new HashMap<>();
-
     private static ITextureObject object;
+
     /**
      * custom texture binding method, generally same as vanilla, but possible to improve performance later.
      * @param textureURI
      */
-    public static boolean bindTexture(ResourceLocation textureURI) {
+    public static void bindTexture(ResourceLocation textureURI) {
         if (textureURI == null){
             textureURI= new ResourceLocation(TrainsInMotion.MODID,"nullTrain");
         }
+        //clean out the texture bind map when texturepacks are reloaded.
+        if(MCResourcePacks!= Minecraft.getMinecraft().getResourceManager().getResourceDomains()){
+            MCResourcePacks= Minecraft.getMinecraft().getResourceManager().getResourceDomains();
+            tmtMap=new HashMap<>();
+            tmtBoundTextures = new HashMap<>();
+        }
         if(ClientProxy.ForceTextureBinding) {
-            object = Minecraft.getMinecraft().getTextureManager().getTexture(textureURI);
+             object = Minecraft.getMinecraft().getTextureManager().getTexture(textureURI);
             if (object == null) {
                 object = new SimpleTexture(textureURI);
                 Minecraft.getMinecraft().getTextureManager().loadTexture(textureURI, object);
@@ -78,102 +93,55 @@ public class TextureManager {
                 GL11.glBindTexture(GL_TEXTURE_2D, id);
             }
         }
-        return true;
-    }
-
-    public static @Nullable int[] loadTexture(ResourceLocation resource){
-        //if the list of loaded resource packs has changed, invalidate our texture cache as well.
-        if(Minecraft.getMinecraft().getResourceManager().getResourceDomains() != MCResourcePacks){
-            MCResourcePacks = Minecraft.getMinecraft().getResourceManager().getResourceDomains();
-            tmtTextureMap =new HashMap<>();
-        }
-        DebugUtil.printGLError(GL11.glGetError());
-
-        int[] texture = tmtTextureMap.get(resource);
-
-        bindTexture(resource);
-        if(texture==null){
-
-                int width =glGetTexLevelParameteri(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH);
-                int height =glGetTexLevelParameteri(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT);
-
-                GL11.glGetTexImage(GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL_UNSIGNED_BYTE, renderPixels);
-                DebugUtil.printGLError(GL11.glGetError());
-                texture = new int[((width*height)*4)+2];
-                texture[0]=width;
-                texture[1]=height;
-                for (int i=2; i<((width*height)*(4))-2; i+=(4)){
-                    texture[i+3]=renderPixels.get(i+3);//alpha
-                    texture[i+2]=renderPixels.get(i+2);//Red
-                    texture[i+1]=renderPixels.get(i+1);//Green
-                    texture[i]=renderPixels.get(i);//Blue
-                }
-            tmtTextureMap.put(resource, texture);
-        }
-        DebugUtil.printGLError(GL11.glGetError());
-
-        return texture;
-    }
-
-    private static List<String> transportTextureFails = new ArrayList<>();
-
-
-
-    public static void maskColors(ResourceLocation textureURI, List<Integer> colors){
-        pixels = loadTexture(textureURI);
-        if(pixels==null){
-            return;
-        }
-        length = ((pixels[0]*pixels[1])*4)-4;
-
-        for(i=0; i<length; i+=4) {
-            renderPixels.put(i+3, b(pixels[i+3]));//alpha is always from host texture.
-            if (pixels[i+3] <0x10){
-                continue;//skip pixels with no color
-            }
-            //for each set of recoloring
-            if (colors!=null && colors.size()>0) {
-                for (Integer col: colors) {
-                    RGBint = hexTorgba(col);
-                    //if it's within 10 RGB, add the actual color we want to the differences
-                    if (colorInRange(pixels[i] & 0xFF, pixels[i + 1] & 0xFF, pixels[i + 2] & 0xFF,
-                            RGBint[0], RGBint[1], RGBint[2])) {
-                        renderPixels.put(i, b(RGBint[0]));
-                        renderPixels.put(i + 1, b(RGBint[1]));
-                        renderPixels.put(i + 2, b(RGBint[2]));
-                    } else {
-                        renderPixels.put(i, b(pixels[i]));
-                        renderPixels.put(i + 1, b(pixels[i + 1]));
-                        renderPixels.put(i + 2, b(pixels[i + 2]));
-                    }
-                }
-            } else {
-                renderPixels.put(i, b(pixels[i]));
-                renderPixels.put(i + 1, b(pixels[i + 1]));
-                renderPixels.put(i + 2, b(pixels[i + 2]));
-            }
-        }
-        DebugUtil.printGLError(GL11.glGetError());
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, pixels[0], pixels[1], GL_RGBA, GL_UNSIGNED_BYTE, renderPixels);
-        renderPixels.clear();//reset the buffer to all 0's.
-        DebugUtil.printGLError(GL11.glGetError());
     }
 
     //most compilers should process this type of function faster than a normal typecast.
     public static byte b(int i){return (byte) i;}
 
     public static boolean colorInRange(int r, int g, int b, int oldR, int oldG, int oldB){
-        return oldR-r>-15 && oldR-r <15 &&
-                oldG-g>-15 && oldG-g <15 &&
-                oldB-b>-15 && oldB-b <15;
+        return oldR-r>-17 && oldR-r <17 &&
+                oldG-g>-17 && oldG-g <17 &&
+                oldB-b>-17 && oldB-b <17;
     }
 
 
     /**Lighting fix*/
     public static void adjustLightFixture(World world, int i, int j, int k) {
-        skyLight = world.getLightBrightnessForSkyBlocks(i, j, k, 0);
-        OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit,  skyLight % 65536,  skyLight / 65536f);
-        GL11.glColor4f(255, 255, 255, 255);//fixes alpha layering bugs with other mods that don't clear their GL cache
+        skyLight = world.getSkyBlockTypeBrightness(EnumSkyBlock.Block, i, j, k);
+        skyLight=world.getSkyBlockTypeBrightness(EnumSkyBlock.Sky, i, j, k) << 20 | (skyLight<0?0:skyLight) << 4;
+        OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit,  skyLight % 65536,  skyLight * 0.00001525878f);
+        GL11.glColor4f(1, 1, 1, 1);//fixes alpha layering bugs with other mods that don't clear their GL cache
+    }
+
+    private static FloatBuffer colorBuffer = GLAllocation.createDirectFloatBuffer(16);
+
+    private static FloatBuffer setColorBuffer(float p_74521_0_, float p_74521_1_, float p_74521_2_, float p_74521_3_)
+    {
+        colorBuffer.clear();
+        colorBuffer.put(p_74521_0_).put(p_74521_1_).put(p_74521_2_).put(p_74521_3_);
+        colorBuffer.flip();
+        /** Float buffer used to set OpenGL material colors */
+        return colorBuffer;
+    }
+
+    public static void fixEntityLighting(){
+
+        GL11.glEnable(GL11.GL_LIGHTING);
+        GL11.glEnable(GL11.GL_LIGHT0);
+        GL11.glEnable(GL11.GL_LIGHT1);
+        GL11.glEnable(GL11.GL_COLOR_MATERIAL);
+        GL11.glColorMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT_AND_DIFFUSE);
+        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, setColorBuffer(0.16169041989141428f, 0.8084520874101966f, -0.5659164515496377f, 0.0f));
+        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, setColorBuffer(0.6F,0.6F,0.6F, 1.0F));
+        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, setColorBuffer(0.0F, 0.0F, 0.0F, 1.0F));
+        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, setColorBuffer(0.0F,0.0F,0.0F, 1.0F));
+        GL11.glLight(GL11.GL_LIGHT1, GL11.GL_POSITION, setColorBuffer(-0.16169041989141428f, 0.8084520874101966f,0.5659164515496377f, 0.0f));
+        GL11.glLight(GL11.GL_LIGHT1, GL11.GL_DIFFUSE, setColorBuffer(0.6F,0.6F,0.6F, 1.0F));
+        GL11.glLight(GL11.GL_LIGHT1, GL11.GL_AMBIENT, setColorBuffer(0.0F, 0.0F, 0.0F, 1.0F));
+        GL11.glLight(GL11.GL_LIGHT1, GL11.GL_SPECULAR, setColorBuffer(0.0F,0.0F,0.0F, 1.0F));
+        GL11.glShadeModel(GL11.GL_FLAT);
+        GL11.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, setColorBuffer(0.4F,0.4F,0.4F, 1.0F));
+
     }
 
 
@@ -240,4 +208,208 @@ public class TextureManager {
     public static int[] hexTorgba(int hex){
         return new int[]{hex&0xFF, (hex>>8)&0xFF, (hex>>16)&0xFF, (hex>>24)&0xFF};
     }
+
+    public static int[] hexTorgb(int hex){
+        return new int[]{hex&0xFF, (hex>>8)&0xFF, (hex>>16)&0xFF};
+    }
+
+
+
+    public  static int[] postProcessColor(int newColor, int r, int g, int b){
+        int[] ret =hexTorgb(newColor);
+
+        ret[0] += ret[0]-b;
+        ret[1] += ret[1]-g;
+        ret[2] += ret[2]-r;
+        return ret;
+    }
+
+
+
+
+
+
+
+
+    public static void bindTexture(ResourceLocation textureURI, int[] skinColorsFrom, int[] skinColorsTo, List<Integer> colorsFrom, List<Integer> colorsTo){
+        //clean out the texture bind map when texturepacks are reloaded.
+        if(MCResourcePacks!= Minecraft.getMinecraft().getResourceManager().getResourceDomains()){
+            MCResourcePacks= Minecraft.getMinecraft().getResourceManager().getResourceDomains();
+            tmtMap=new HashMap<>();
+            tmtBoundTextures = new HashMap<>();
+        }
+
+        GL11.glEnable(GL_TEXTURE_2D);
+        if(!tmtBoundTextures.containsKey(getID(textureURI,skinColorsFrom, skinColorsTo, colorsFrom,colorsTo,false))){
+            if(createAWT(textureURI, skinColorsFrom, skinColorsTo, colorsFrom, colorsTo)){
+                try {
+                    BufferedImage image = ImageIO.read(new File(getID(textureURI,skinColorsFrom, skinColorsTo, colorsFrom, colorsTo, true)));
+
+                    currentKey =tmtBoundTextures.put(getID(textureURI,skinColorsFrom, skinColorsTo, colorsFrom, colorsTo, false),
+                            Minecraft.getMinecraft().getTextureManager().getTexture(
+                                    Minecraft.getMinecraft().getTextureManager().getDynamicTextureLocation(
+                                            getID(textureURI,skinColorsFrom, skinColorsTo, colorsFrom, colorsTo, true),
+                                    new DynamicTexture(image))).getGlTextureId());
+                } catch (IOException ignored){
+                    DebugUtil.println("AWT FAILED");
+                    ignored.printStackTrace();
+                }
+            }
+        } else {
+            currentKey = tmtBoundTextures.get(getID(textureURI,skinColorsFrom, skinColorsTo, colorsFrom, colorsTo, false));
+        }
+
+        //if for some reason the texture couldn't be written to I/O, which should never be an issue.
+        if(currentKey==null){
+            bindTexture(textureURI);
+        } else {
+            if(GL11.glGetInteger(GL_TEXTURE_2D) !=currentKey) {
+                GL11.glBindTexture(GL_TEXTURE_2D, currentKey);
+            }
+        }
+
+    }
+
+
+
+    public static boolean createAWT(ResourceLocation textureURI, int[] skinColorsFrom, int[] skinColorsTo, List<Integer> colorsFrom, List<Integer> colorsTo){
+        bindTexture(textureURI);
+
+        //get image data from the currently bound image
+        int width =glGetTexLevelParameteri(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH);
+        int height =glGetTexLevelParameteri(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT);
+        if(width*height<4){
+            return false;
+        }
+
+        ByteBuffer buffer = BufferUtils.createByteBuffer(width * height * 4);
+
+        GL11.glGetTexImage(GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+
+        //create a buffered image and push the data to it
+        BufferedImage skin = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+
+        int i,r,g,b,a, y,ii;
+        int[] col;
+
+        for (int x = 0; x < width; x++) {
+            for (y = 0; y < height; y++) {
+
+                i = (x + (width * y)) * 4;
+                r = buffer.get(i) & 0xff;
+                g = buffer.get(i + 1) & 0xff;
+                b = buffer.get(i + 2) & 0xff;
+                a = buffer.get(i + 3) & 0xff;
+                if(a==0){
+                    skin.setRGB(x,y,0x00000000);
+                    continue;
+                }
+
+                //recolor from skin
+                if(skinColorsFrom!=null&&skinColorsFrom.length>0){
+                    for (ii=0;ii<skinColorsFrom.length;ii++){
+                        col = hexTorgb(skinColorsFrom[ii]);
+                        if(colorInRange(r,g,b,col[2],col[1],col[0])){
+                            col=postProcessColor(skinColorsTo[ii],r,g,b);
+                            r=col[2];
+                            g=col[1];
+                            b=col[0];
+                        }
+                    }
+                }
+                //recolor from player settings. ORDER IS IMPORTANT
+                if(colorsFrom!=null && colorsFrom.size()>0) {
+                    for (ii=0;ii<colorsFrom.size();ii++){
+                        col = hexTorgba(colorsFrom.get(ii));
+                        if(colorInRange(r,g,b,col[2],col[1],col[0])){
+                            col=postProcessColor(skinColorsTo[ii],r,g,b);
+                            r=col[2];
+                            g=col[1];
+                            b=col[0];
+                        }
+                    }
+                }
+
+                skin.setRGB(x, y, (a << 24) | (r << 16) | (g << 8) | b);
+            }
+        }
+
+        try {
+            if(!new File(ClientProxy.configDirectory+"/TrainsInMotionCache/"+
+                    resourceLocation(textureURI)).exists()){
+                new File(ClientProxy.configDirectory+"/TrainsInMotionCache/"+
+                        resourceLocation(textureURI)).mkdirs();
+            }
+            ImageIO.write(skin, "PNG", new File(getID(textureURI,skinColorsFrom, skinColorsTo, colorsFrom,colorsTo,true)));
+            buffer.clear();
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            buffer.clear();
+            return false;
+        }
+    }
+
+    private static String getID(ResourceLocation textureURI, int[] skinColorsFrom, int[] skinColorsTo, List<Integer> colorsFrom, List<Integer> colorsTo, boolean isFile){
+        StringBuilder filePath = new StringBuilder();
+        if(isFile) {
+            filePath.append(ClientProxy.configDirectory);
+            filePath.append("/TrainsInMotionCache/");
+            filePath.append(resourceLocation(textureURI));
+            filePath.append("/");
+            if(skinColorsFrom!=null && skinColorsTo!=null && skinColorsFrom.length>0 && skinColorsTo.length>0) {
+                for (Integer i : skinColorsFrom) {
+                    filePath.append(Integer.toHexString(i));
+                }
+                filePath.append("_");
+                for (Integer i : skinColorsTo) {
+                    filePath.append(Integer.toHexString(i));
+                }
+                filePath.append("+");
+            }
+            if(colorsFrom==null || colorsTo==null || colorsFrom.size()+colorsTo.size()==0){
+                filePath.append("000_000");
+            } else {
+                for (Integer i : colorsFrom) {
+                    filePath.append(Integer.toHexString(i));
+                }
+                filePath.append("_");
+                for (Integer i : colorsTo) {
+                    filePath.append(Integer.toHexString(i));
+                }
+            }
+            filePath.append(".png");
+        } else {
+            filePath.append(resourceLocation(textureURI));
+            filePath.append(".");
+            if(skinColorsFrom!=null && skinColorsTo!=null && skinColorsFrom.length>0 && skinColorsTo.length>0) {
+                for (Integer i : skinColorsFrom) {
+                    filePath.append(Integer.toHexString(i));
+                }
+                filePath.append("_");
+                for (Integer i : skinColorsTo) {
+                    filePath.append(Integer.toHexString(i));
+                }
+                if(colorsFrom!=null && colorsTo!=null && colorsFrom.size()+colorsTo.size()>1) {
+                    filePath.append("+");
+                }
+            }
+            if(colorsFrom!=null && colorsTo!=null && colorsFrom.size()+colorsTo.size()>1){
+                for (Integer i : colorsFrom) {
+                    filePath.append(Integer.toHexString(i));
+                }
+                for (Integer i : colorsTo) {
+                    filePath.append(Integer.toHexString(i));
+                }
+            }
+        }
+        return filePath.toString();
+    }
+
+    private static String resourceLocation(ResourceLocation res){
+        return (res.getResourceDomain() + "/"
+                +res.getResourcePath().
+                substring(0, res.getResourcePath().lastIndexOf(".")));
+    }
+
 }

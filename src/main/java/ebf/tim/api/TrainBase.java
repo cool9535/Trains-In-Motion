@@ -45,12 +45,6 @@ public abstract class TrainBase extends EntityTrainCore{
     public abstract TrainsInMotion.transportTypes getType();
 
     /**
-     * returns the positions for the hitbox, they are defined by length from center.
-     * must have at least 4 hitboxes, the first and last values are used for coupling positions
-     */
-    public abstract double[][] getHitboxPositions();
-
-    /**
      * returns the item of the transport, this should be a static value in the transport's class.
      */
     public abstract Item getItem();
@@ -65,11 +59,6 @@ public abstract class TrainBase extends EntityTrainCore{
      * defines the radius in microblocks that the pistons animate
      */
     public abstract float getPistonOffset();
-
-    /**
-     * defines smoke positions, the outer array defines each new smoke point, the inner arrays define the X/Y/Z
-     */
-    public abstract float[][] getSmokeOffset();
 
     /**
      * defines the length from center of the transport, thus is used for the motion calculation
@@ -90,13 +79,9 @@ public abstract class TrainBase extends EntityTrainCore{
      * defines the capacity of the fluidTank tank.
      * Usually value is 10,000 *the cubic meter capacity, so 242 gallons, is 0.9161 cubic meters, which is 9161 tank capacity
      * NOTE if this is used for a train, minimum value should be 1100, which is just a little over a single bucket to allow prevention of overheating.
+     * NOTE 2: RF is stored as a fluid
      */
     public abstract int[] getTankCapacity();
-
-    /**
-     * defines the capacity of the RF storage, intended for electric rollingstock that store power for the train.
-     */
-    public abstract int getRFCapacity();
 
     /**
      * this function allows individual trains and rollingstock to implement custom fuel consumption and management
@@ -193,10 +178,12 @@ public abstract class TrainBase extends EntityTrainCore{
     */
 
     /** defines the whitelist of fluid names for the tank defined by tankID
-     * example:
+     * NOTE: RF is a fluid.
+     * simple example:
+     * return FuelHandler.DefaultTanks.ELECTRIC.value();
+     * alternate example:
      * if(tankID==0){return new String[]{"water", "diesel"}} else { return null}*/
-    @Deprecated //replace with an array of string arrays, more similar to other methods
-    public abstract String[] getTankFilters(int tankID);
+    public abstract String[][] getTankFilters();
 
 
     /**defines the name used for registration and the default name used in the gui.*/

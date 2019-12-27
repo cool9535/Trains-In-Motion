@@ -89,6 +89,8 @@ public class ClientProxy extends CommonProxy {
 
     private static Configuration wailaConfig=null;
 
+    public static String configDirectory;
+
     /**
      * <h2> Client GUI Redirect </h2>
      *
@@ -107,7 +109,7 @@ public class ClientProxy extends CommonProxy {
                 if (player.getHeldItem().getItem() instanceof ItemCraftGuide) {
                     return new GUICraftBook();
                 } else if (player.getHeldItem().getItem() instanceof ItemPaintBucket){
-                    return new GUISkinManager((GenericRailTransport) player.worldObj.getEntityByID(ID));
+                    return new GUIPaintBucket((GenericRailTransport) player.worldObj.getEntityByID(ID));
                 }
             }
             //Trains
@@ -170,6 +172,8 @@ public class ClientProxy extends CommonProxy {
 
         config.save();
 
+        configDirectory = event.getModConfigurationDirectory().getAbsolutePath();
+
         File wailaConf = new File(event.getModConfigurationDirectory(), "Waila.cfg");
 
         if(wailaConf.exists()) {
@@ -202,7 +206,7 @@ public class ClientProxy extends CommonProxy {
 
         //oveides the server registration of the rail item, so the client can have a complex model.
         //   server can't load the CustomItemModel class due to it's reliance on GL imports.
-        railItem = RegisterItem(TrainsInMotion.proxy.isClient(),new ItemRail(),TrainsInMotion.MODID,  "timrail", null, TrainsInMotion.creativeTab, null, TiMGenericRegistry.itemModel);
+        railItem = RegisterItem(new ItemRail(),TrainsInMotion.MODID,  "timrail", null, TrainsInMotion.creativeTab, null, TiMGenericRegistry.itemModel);
         //Minecraft.getMinecraft().render
 
 
@@ -275,8 +279,8 @@ public class ClientProxy extends CommonProxy {
             if(p_78443_2_.getItem() instanceof ItemRail){
                 if(p_78443_2_.getTagCompound().hasKey("ballast")){
                     RailShapeCore p = new RailShapeCore();
-                    p.activePath.add(new Vec5f(-0.5f,0f,0f,0,0));
-                    p.activePath.add(new Vec5f(0.5f,0f,0f,0,0));
+                    p.activePath.add(new Vec6f(-0.5f,0f,0f,0,0));
+                    p.activePath.add(new Vec6f(0.5f,0f,0f,0,0));
                     p.gauge=new int[]{375};
                     ModelBallast.modelPotatoBallast(p,0.5f,-0.5f,
                             ItemStack.loadItemStackFromNBT(p_78443_2_.getTagCompound().getCompoundTag("ballast")));

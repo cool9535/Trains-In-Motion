@@ -136,7 +136,7 @@ public class GroupedModelRender {
                 GL11.glRotated(block.rotateAngleY * RailUtility.degreesD, 0, 1, 0);
                 GL11.glRotated((block.rotateAngleZ * RailUtility.degreesD)+90, 0, 0, 1);
                 //define scale based on the model
-                GL11.glScaled((block.xScale - 0.0175)*0.0625f, (block.yScale - 0.0175)*0.0625f, (block.zScale - 0.0175)*0.0625f);
+                GL11.glScaled(0.0625f, 0.0625f, 0.0625f);
                 //now actually render the block.
                 field_147909_c.renderBlockAsItem( Block.getBlockFromItem(blockStack.getItem()), blockStack.getItemDamage(), 1.0f);
                 GL11.glPopMatrix();
@@ -144,7 +144,7 @@ public class GroupedModelRender {
             GL11.glPopMatrix();
         } else {
             //render the geometry normally if it's not a block.
-            Tessellator.bindTexture(transport.getTexture(Minecraft.getMinecraft().thePlayer).texture);
+            Tessellator.bindTexture(transport.getTexture(Minecraft.getMinecraft().thePlayer).getTexture(0));
             int liveryIndex=-1;
             String lastLivery="";
             for (ModelRendererTurbo block : boxRefrence) {
