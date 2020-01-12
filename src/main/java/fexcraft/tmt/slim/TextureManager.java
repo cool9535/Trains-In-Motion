@@ -3,6 +3,7 @@ package fexcraft.tmt.slim;
 import ebf.tim.TrainsInMotion;
 import ebf.tim.utility.ClientProxy;
 import ebf.tim.utility.DebugUtil;
+import ebf.tim.utility.RecipeManager;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GLAllocation;
@@ -148,18 +149,7 @@ public class TextureManager {
      * Ingot color textures
      */
     public static void collectIngotColors(){
-        String[] ores = OreDictionary.getOreNames();
-        List<ItemStack> Ores=new ArrayList<>();
-
-        Ores.add(new ItemStack(Items.diamond));
-        Ores.add(new ItemStack(Items.blaze_rod));
-
-        for(String o: ores) {
-            if (o.contains("ingot") || o.contains("plank")) {
-                Ores.addAll(OreDictionary.getOres(o));
-            }
-        }
-
+        List<ItemStack> Ores= RecipeManager.getAcceptedRailItems();
 
         int red,green,blue,divisor;
         int[]rgb, colorBuff;
@@ -169,7 +159,7 @@ public class TextureManager {
             texture=null;
             red =0;green=0;blue=0;divisor=0;
             Item item = s.getItem();
-            String textureName = item.getIcon(s,0).getIconName();
+            String textureName = item.getIcon(s,0)!=null?item.getIcon(s,0).getIconName():null;
             if(textureName != null){
                 if(textureName.split(":").length == 1){
                     textureName = "minecraft:" + textureName;

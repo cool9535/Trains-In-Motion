@@ -16,12 +16,13 @@ import ebf.tim.items.ItemCraftGuide;
 import ebf.tim.items.ItemPaintBucket;
 import ebf.tim.items.ItemRail;
 import ebf.tim.models.RenderEntity;
-import ebf.tim.models.RenderScaledPlayer;
 import ebf.tim.models.rails.ModelBallast;
 import ebf.tim.registry.TiMGenericRegistry;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.entity.Render;
+import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
@@ -70,6 +71,8 @@ public class ClientProxy extends CommonProxy {
     public static boolean enableTransportTooltip=true;
     /**enables 3d items for trains and stock*/
     public static boolean hdTransportItems = true;
+    /*enables pre-render of models*/
+    public static boolean preRenderModels = false;
     /**the keybind for the lamp toggle*/
     public static KeyBinding KeyLamp = new KeyBinding("Lamp Toggle", Keyboard.KEY_L, "Trains in Motion");
     /**the keybind for the horn/whistle*/
@@ -155,6 +158,9 @@ public class ClientProxy extends CommonProxy {
         hdTransportItems = config.getBoolean("3dTransportItems","Quality (Client only)", true,
                 "Overrides the render of train and rollingstock items to use their full model. NOTICE: after the pre-alpha stages this should default to false.");
 
+        preRenderModels = config.getBoolean("preRenderModels","Quality (Client only)", false,
+                "Pre-renders transport entity and item models during loading screen and stores them on GPU, Requires a lot of VRAM but makes the game run smoother, Don't use if get the GL error 1285 (Out of memory)");
+
         ForceTextureBinding = config.getBoolean("ForceTextureBinding","Quality (Client only)", false,
                 "Forces textures to be bound, slows performance on some machines, speeds it up on others, and fixes a rare bug where the the texture does not get bound. So... This REALLY depends on your machine, see what works best for you.");
 
@@ -202,11 +208,11 @@ public class ClientProxy extends CommonProxy {
         //seats
         RenderingRegistry.registerEntityRenderingHandler(EntitySeat.class, nullRender);
         //player scaler
-        RenderingRegistry.registerEntityRenderingHandler(EntityPlayer.class, new RenderScaledPlayer());
+        RenderingRegistry.registerEntityRenderingHandler(EntityPlayer.class, playerRender);
 
         //oveides the server registration of the rail item, so the client can have a complex model.
         //   server can't load the CustomItemModel class due to it's reliance on GL imports.
-        railItem = RegisterItem(new ItemRail(),TrainsInMotion.MODID,  "timrail", null, TrainsInMotion.creativeTab, null, TiMGenericRegistry.itemModel);
+        railItem = RegisterItem(new ItemRail(),TrainsInMotion.MODID,  "timrail", null, TrainsInMotion.creativeTab, null, ebf.tim.items.CustomItemModel.instance);
         //Minecraft.getMinecraft().render
 
 
@@ -251,8 +257,9 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public Object getTESR(){return specialRenderer;}
+
     @Override
-    public Object getEntityRender(){return transportRenderer;}
+    public Render getEntityRender(){return transportRenderer;}
     @Override
     public Object getNullRender(){return nullRender;}
 
@@ -303,6 +310,35 @@ public class ClientProxy extends CommonProxy {
         @Override
         protected ResourceLocation getEntityTexture(Entity p_110775_1_) {
             return null;
+        }
+    };
+
+    private static final RenderPlayer playerRender= new RenderPlayer(){
+        GenericRailTransport t;
+        @Override
+        public void doRender(AbstractClientPlayer p_76986_1_, double p_76986_2_, double p_76986_4_, double p_76986_6_, float p_76986_8_, float p_76986_9_){
+            if (p_76986_1_.ridingEntity instanceof GenericRailTransport) {
+                t=(GenericRailTransport) p_76986_1_.ridingEntity;
+                GL11.glPushMatrix();
+                GL11.glScalef(t.getPlayerScale(), t.getPlayerScale(), t.getPlayerScale());
+                super.doRender(p_76986_1_, p_76986_2_, p_76986_4_, p_76986_6_, p_76986_8_, p_76986_9_);
+                GL11.glPopMatrix();
+
+            } else if (p_76986_1_.ridingEntity instanceof EntitySeat){
+                t=(GenericRailTransport) p_76986_1_.worldObj.getEntityByID(((EntitySeat) p_76986_1_.ridingEntity).parentId);
+                GL11.glPushMatrix();
+                GL11.glScalef(t.getPlayerScale(), t.getPlayerScale(), t.getPlayerScale());
+                if(p_76986_1_.ridingEntity.getLookVec() !=null) {
+                    GL11.glRotated(p_76986_1_.ridingEntity.getLookVec().xCoord, 0, 1, 0);
+                    GL11.glRotated(p_76986_1_.ridingEntity.getLookVec().yCoord, 0, 0, 1);
+                    GL11.glRotated(p_76986_1_.ridingEntity.getLookVec().zCoord, 1, 0, 0);
+                }
+                super.doRender(p_76986_1_, p_76986_2_, p_76986_4_, p_76986_6_, p_76986_8_, p_76986_9_);
+                GL11.glPopMatrix();
+
+            } else {
+                super.doRender(p_76986_1_, p_76986_2_, p_76986_4_, p_76986_6_, p_76986_8_, p_76986_9_);
+            }
         }
     };
 }

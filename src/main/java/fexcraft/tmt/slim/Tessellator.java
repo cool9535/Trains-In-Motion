@@ -21,8 +21,9 @@ public class Tessellator{
 
 	public static Tessellator INSTANCE = new Tessellator();
 
-	private static Float x, y, z,nX, nY, nZ;
-	private static boolean normalMapped=false;
+	private static int i,j;//only used for calculations
+	private static Float x, y, z;
+	private static Vec3f normal=null, p1;//p1 only used for calculations
 	private static List<float[]> verticies = new ArrayList<>(); //0,1,2 are the position, 3,4,5,6 are the texture vectors.
 
 	public static Tessellator getInstance(){
@@ -32,14 +33,13 @@ public class Tessellator{
 	//use this to reset and define the drawing mode
 	public void startDrawing(int mode){
 		verticies=new ArrayList<>();
-		normalMapped=false;
-		glEnable(GL_NORMALIZE);
+		normal=null;
 		GL11.glBegin(mode);
 	}
 
 	public void draw(){
-		if(normalMapped) {
-			GL11.glNormal3f(nX, nY, nZ);
+		if(normal!=null) {
+			GL11.glNormal3f(normal.xCoord, normal.yCoord, normal.zCoord);
 		}
 		for(float[] f : verticies){
 			if(f.length>3) {
@@ -48,7 +48,6 @@ public class Tessellator{
 			GL11.glVertex3f(f[0],f[1],f[2]);
 		}
 		GL11.glEnd();
-		glDisable(GL_NORMALIZE);
 	}
 	
 	public void addVertex(float i, float j, float k){
@@ -95,15 +94,71 @@ public class Tessellator{
 		TextureManager.bindTexture(uri);
 	}
 
+	public static void setNormal(List<PositionTransformVertex> vertex){
+		normal=new Vec3f(0,0,0);
+		Vec3f p0,p1;
+		for(int i=0, j=1; i<vertex.size(); i++,j++) {
 
-	public static void setNormal(Vec3f p1, Vec3f p2, Vec3f p3) {
-		Vec3f calU = new Vec3f(p2.xCoord-p1.xCoord, p2.yCoord-p1.yCoord, p2.zCoord-p1.zCoord);
-		Vec3f calV = new Vec3f(p3.xCoord-p1.xCoord, p3.yCoord-p1.yCoord, p3.zCoord-p1.zCoord);
+			if (j == vertex.size()){j=1;}
+			p0 = vertex.get(i).vector3F;// current vertex
+			p1 = vertex.get(j).vector3F;// next vertex
 
-		nX=(calU.yCoord*calV.zCoord - calU.zCoord*calV.yCoord);
-		nY=(calU.zCoord*calV.xCoord - calU.xCoord*calV.zCoord);
-		nZ=(calU.xCoord*calV.yCoord - calU.yCoord*calV.xCoord);
-		normalMapped=true;
+			normal.xCoord += (p0.yCoord - p1.yCoord) * (p0.zCoord + p1.zCoord);
+			normal.yCoord += (p0.zCoord - p1.zCoord) * (p0.xCoord + p1.xCoord);
+			normal.zCoord += (p0.xCoord - p1.xCoord) * (p0.yCoord + p1.yCoord);
+		}
 	}
+
+
+	public void addTexturedVertsWithNormal(List<PositionTransformVertex> vertexList){
+		i=0;j=1;
+		normal=new Vec3f(0,0,0);
+		for(PositionTransformVertex vert : vertexList) {
+			if (x != null) {
+				verticies.add(new float[]{
+						vert.vector3F.xCoord + x, vert.vector3F.yCoord + y, vert.vector3F.zCoord + z,
+						vert.textureX, vert.textureY});
+			} else {
+				verticies.add(new float[]{
+						vert.vector3F.xCoord, vert.vector3F.yCoord, vert.vector3F.zCoord,
+						vert.textureX, vert.textureY});
+			}
+
+			if (j == vertexList.size()){j=1;}
+			p1 = vertexList.get(j).vector3F;// next vertex
+
+			normal.xCoord += (vert.vector3F.yCoord - p1.yCoord) * (vert.vector3F.zCoord + p1.zCoord);
+			normal.yCoord += (vert.vector3F.zCoord - p1.zCoord) * (vert.vector3F.xCoord + p1.xCoord);
+			normal.zCoord += (vert.vector3F.xCoord - p1.xCoord) * (vert.vector3F.yCoord + p1.yCoord);
+		}
+	}
+
+
+	public void drawTexturedVertsWithNormal(List<PositionTransformVertex> vertexList, float scale){
+		verticies=new ArrayList<>();
+		normal=null;
+		i=0;j=1;
+		normal=new Vec3f(0,0,0);
+		GL11.glBegin(vertexList.size()==4?GL11.GL_QUADS:vertexList.size()==3?GL11.GL_TRIANGLES:GL11.GL_POLYGON);
+		for(PositionTransformVertex vert : vertexList) {
+			GL11.glTexCoord2f(vert.textureX, vert.textureY);
+			if (x != null) {
+				GL11.glVertex3f((vert.vector3F.xCoord + x)*scale, (vert.vector3F.yCoord + y)*scale, (vert.vector3F.zCoord + z)*scale);
+			} else {
+				GL11.glVertex3f(vert.vector3F.xCoord*scale, vert.vector3F.yCoord*scale, vert.vector3F.zCoord*scale);
+			}
+
+			if (j == vertexList.size()){j=1;}
+			p1 = vertexList.get(j).vector3F;// next vertex
+
+			normal.xCoord += (vert.vector3F.yCoord - p1.yCoord) * (vert.vector3F.zCoord + p1.zCoord);
+			normal.yCoord += (vert.vector3F.zCoord - p1.zCoord) * (vert.vector3F.xCoord + p1.xCoord);
+			normal.zCoord += (vert.vector3F.xCoord - p1.xCoord) * (vert.vector3F.yCoord + p1.yCoord);
+		}
+		GL11.glNormal3f(normal.xCoord, normal.yCoord, normal.zCoord);
+		GL11.glEnd();
+	}
+
+
 
 }
