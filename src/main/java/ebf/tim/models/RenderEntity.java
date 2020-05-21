@@ -1,10 +1,8 @@
 package ebf.tim.models;
 
-import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.skin;
 import ebf.tim.entities.GenericRailTransport;
 import ebf.tim.utility.ClientProxy;
-import ebf.tim.utility.DebugUtil;
 import ebf.tim.utility.RailUtility;
 import fexcraft.tmt.slim.*;
 import net.minecraft.client.Minecraft;
@@ -16,7 +14,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.Vec3;
 import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
@@ -32,7 +29,7 @@ public class RenderEntity extends Render {
     private static final float RailOffset = 0.34f;
     private static int i=0, ii=0, iii=0;
     public static RenderEntity instance = new RenderEntity();
-
+    public static RenderBlocks renderBlocks;
     //public RenderEntity() {}
 
     /**
@@ -58,7 +55,14 @@ public class RenderEntity extends Render {
     }
 
     public void render(GenericRailTransport entity, double x, double y, double z, float yaw, boolean isPaintBucket) {
-        doRender(entity,x,y,z,yaw,entity.frontBogie!=null?entity.frontBogie.yOffset:0, isPaintBucket, null);
+        renderBlocks=field_147909_c;
+        doRender(entity,x,y,z,yaw,entity.frontBogie!=null?entity.frontBogie.yOffset:0, isPaintBucket, null, this);
+    }
+
+
+    public void render(GenericRailTransport entity, double x, double y, double z, float yaw, boolean isPaintBucket, skin textureURI) {
+        renderBlocks=field_147909_c;
+        doRender(entity,x,y,z,yaw,entity.frontBogie!=null?entity.frontBogie.yOffset:0, isPaintBucket, textureURI, this);
     }
 
     /**
@@ -78,7 +82,7 @@ public class RenderEntity extends Render {
      *
      *
      */
-    public void doRender(GenericRailTransport entity, double x, double y, double z, float yaw, float bogieOffset, boolean isPaintBucket, @Nullable String textureURI){
+    public static void doRender(GenericRailTransport entity, double x, double y, double z, float yaw, float bogieOffset, boolean isPaintBucket, @Nullable skin textureURI, RenderEntity renderInstance){
 
         if (entity.renderData.modelList == null || entity.renderData.needsModelUpdate) {
             entity.renderData = new TransportRenderData();
@@ -128,16 +132,46 @@ public class RenderEntity extends Render {
                 if (entity.renderData.bogies != null) {
                     for (Bogie bogie : entity.renderData.bogies) { {
                             for (ModelRendererTurbo box : bogie.bogieModel.getParts()) {
+                                if (box.boxName ==null){continue;}
+                                //attempt to cache the parts for the main transport model
+                                if(StaticModelAnimator.checkCulls(box)){
+                                    box.showModel = false;
+                                }
+                                if(box.boxName.contains(StaticModelAnimator.tagGlow)){
+                                    box.boxName=box.boxName.replace(StaticModelAnimator.tagGlow,"");
+                                    box.ignoresLighting=true;
+                                }
                                 if (StaticModelAnimator.checkAnimators(box)) {
                                     entity.renderData.animatedPart.add(StaticModelAnimator.initPart(box, entity));
+                                    box.animated=true;
+                                }
+                                if(ParticleFX.parseData(box.boxName, entity.getClass())!=null){
+                                    entity.renderData.particles.addAll(ParticleFX.newParticleItterator(box.boxName,
+                                            box.rotationPointX, box.rotationPointY, box.rotationPointZ,
+                                            box.rotateAngleX,box.rotateAngleY,box.rotateAngleZ, entity));
                                 }
                             }
                             if(bogie.subBogies==null){continue;}
                             //cache the animating parts on sub-bogies
                             for(Bogie subBogie : bogie.subBogies){
                                 for(ModelRendererTurbo box : subBogie.bogieModel.getParts()){
+                                    if (box.boxName ==null){continue;}
+                                    //attempt to cache the parts for the main transport model
+                                    if(StaticModelAnimator.checkCulls(box)){
+                                        box.showModel = false;
+                                    }
+                                    if(box.boxName.contains(StaticModelAnimator.tagGlow)){
+                                        box.boxName=box.boxName.replace(StaticModelAnimator.tagGlow,"");
+                                        box.ignoresLighting=true;
+                                    }
                                     if (StaticModelAnimator.checkAnimators(box)) {
                                         entity.renderData.animatedPart.add(StaticModelAnimator.initPart(box, entity));
+                                        box.animated=true;
+                                    }
+                                    if(ParticleFX.parseData(box.boxName, entity.getClass())!=null){
+                                        entity.renderData.particles.addAll(ParticleFX.newParticleItterator(box.boxName,
+                                                box.rotationPointX, box.rotationPointY, box.rotationPointZ,
+                                                box.rotateAngleX,box.rotateAngleY,box.rotateAngleZ, entity));
                                     }
                                 }
                             }
@@ -157,8 +191,8 @@ public class RenderEntity extends Render {
         GL11.glAlphaFunc(GL11.GL_GREATER, 0.1f);
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glEnable(GL11.GL_NORMALIZE);
+        GL11.glEnable(GL11.GL_LIGHTING);
 
-            GL11.glEnable(GL11.GL_LIGHTING);
         //set the render position
         GL11.glTranslated(x, y+ (entity.onVanillaRails?0:RailOffset) + ((entity.getRenderScale()-0.0625f)*10)+bogieOffset, z);
         //rotate the model.
@@ -201,13 +235,11 @@ public class RenderEntity extends Render {
          */
         //System.out.println(entity.getTexture(0).getResourcePath() + entity.getDataWatcher().getWatchableObjectInt(24));
         skin s;
-        if(entity.worldObj!=null) {
+        if(!isPaintBucket && entity.worldObj!=null) {
             TextureManager.adjustLightFixture(entity.worldObj, (int) entity.posX, (int) entity.posY + 1, (int) entity.posZ);
             s=entity.getTexture(Minecraft.getMinecraft().thePlayer);
-        } else if (textureURI!=null && entity.getTextureByID(
-                Minecraft.getMinecraft().thePlayer, isPaintBucket,textureURI)!=null){
-            s=entity.getTextureByID(
-                    Minecraft.getMinecraft().thePlayer, isPaintBucket,textureURI);
+        } else if (textureURI!=null){
+            s=textureURI;
         } else {
             s=entity.getTextureByID(Minecraft.getMinecraft().thePlayer,false, entity.getDefaultSkin());
         }
@@ -218,14 +250,14 @@ public class RenderEntity extends Render {
             if(entity.modelOffsets()!=null && entity.modelOffsets().length>i) {
                 GL11.glTranslated(entity.modelOffsets()[i][0],entity.modelOffsets()[i][1],entity.modelOffsets()[i][2]);
             }
-            entity.renderData.modelList[i].render(entity, 0, 0, 0, 0, 0, entity.getRenderScale());
+            entity.renderData.modelList[i].render(entity, 0,0,0,0,0, entity.getRenderScale());
             GL11.glPopMatrix();
         }
 
 
         //loop for the groups of cargo
         for (i = 0; i< entity.renderData.blockCargoRenders.size() && i < entity.calculatePercentageOfSlotsUsed(entity.renderData.blockCargoRenders.size()); i++) {
-            entity.renderData.blockCargoRenders.get(i).doRender(field_147909_c, entity.getFirstBlock(i), this, entity.getRenderScale(), entity);
+            entity.renderData.blockCargoRenders.get(i).doRender(renderBlocks, entity.getFirstBlock(i), renderInstance, entity.getRenderScale(), entity);
         }
 
         /*
@@ -246,7 +278,7 @@ public class RenderEntity extends Render {
                 b.setRotation(entity);
                 GL11.glRotatef(b.rotationYaw-yaw, 0.0f, 1.0f, 0);
                 GL11.glRotatef(entity.rotationPitch, 0.0f, 0.0f, 1.0f);
-                b.bogieModel.render(null, 0, 0, 0, 0, 0, entity.getRenderScale());
+                b.bogieModel.render(entity, 0, 0, 0, 0, 0, entity.getRenderScale());
                 if(b.subBogies!=null) {
                     iii=0;
                     for (Bogie sub : b.subBogies) {
@@ -254,11 +286,10 @@ public class RenderEntity extends Render {
                             TextureManager.bindTexture(s.getSubBogieSkin(iii), s.colorsFrom, s.colorsTo, entity.colorsFrom, entity.colorsTo);
                         }
                         GL11.glPushMatrix();
-                        GL11.glTranslated(sub.offset[0], sub.offset[1], sub.offset[2]);
+                        GL11.glTranslated(sub.offset[0]-b.offset[0], sub.offset[1]-b.offset[1], sub.offset[2]-b.offset[2]);
                         sub.setRotation(entity);
-                        GL11.glRotatef(sub.rotationYaw-yaw, 0.0f, 1.0f, 0);
-                        GL11.glRotatef(entity.rotationPitch - 180f, 0.0f, 0.0f, 1.0f);
-                        sub.bogieModel.render(null, 0, 0, 0, 0, 0, entity.getRenderScale());
+                        GL11.glRotatef(sub.rotationYaw-b.rotationYaw, 0.0f, 1.0f, 0);
+                        sub.bogieModel.render(entity, 0, 0, 0, 0, 0, entity.getRenderScale());
                         GL11.glPopMatrix();
                         iii++;
                     }
@@ -270,7 +301,6 @@ public class RenderEntity extends Render {
         }
 
         GL11.glPopMatrix();
-        GL11.glDisable(GL11.GL_LIGHTING);
         if(entity.worldObj==null){return;}
 
         //render the particles, if there are any.

@@ -2,7 +2,6 @@ package ebf.tim.models;
 
 import ebf.tim.TrainsInMotion;
 import ebf.tim.entities.GenericRailTransport;
-import ebf.tim.utility.DebugUtil;
 import ebf.tim.utility.RailUtility;
 import fexcraft.tmt.slim.ModelBase;
 import fexcraft.tmt.slim.ModelRendererTurbo;
@@ -16,9 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static fexcraft.tmt.slim.ModelRendererTurbo.MR_BOTTOM;
-import static fexcraft.tmt.slim.ModelRendererTurbo.MR_TOP;
-import static fexcraft.tmt.slim.TextureManager.b;
 import static org.lwjgl.opengl.GL11.*;
 
 /**
@@ -290,11 +286,12 @@ public class ParticleFX {
             lamp.clear();
             lamp.addCylinder(0, 0, 0,
                     15f*size, 100*size, 15, 0.02f, 2f,
-                    3, 1,1,5);
+                    3, 1,1,5,null);
+            lamp.setRotationAngle(entity.offset[3],entity.offset[4], entity.offset[5]);
 
-            //GL11.glRotated(entity.offset[4]+entity.host.rotationPitch,1,0,0);
+            GL11.glRotated(entity.host.rotationPitch,1,0,0);
             GL11.glRotated(-yaw -180f,0,1,0);
-            //GL11.glRotated(entity.offset[5],1,0,0);
+           // GL11.glRotated(ROLL,1,0,0);
             lamp.setPosition(
                     -entity.offset[0]-(2.5f),
                     -(entity.offset[1]-(0.0625f*138f)),

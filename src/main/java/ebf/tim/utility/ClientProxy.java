@@ -5,7 +5,6 @@ import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import ebf.tim.TrainsInMotion;
 import ebf.tim.blocks.TileEntityStorage;
 import ebf.tim.blocks.rails.RailShapeCore;
 import ebf.tim.entities.EntityBogie;
@@ -17,7 +16,6 @@ import ebf.tim.items.ItemPaintBucket;
 import ebf.tim.items.ItemRail;
 import ebf.tim.models.RenderEntity;
 import ebf.tim.models.rails.ModelBallast;
-import ebf.tim.registry.TiMGenericRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.renderer.ItemRenderer;
@@ -39,8 +37,6 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
 import java.io.File;
-
-import static ebf.tim.registry.TiMGenericRegistry.RegisterItem;
 
 /**
  * <h1>client proxy</h1>
@@ -81,6 +77,8 @@ public class ClientProxy extends CommonProxy {
     public static KeyBinding KeyInventory = new KeyBinding("Open Train/rollingstock GUI",  Keyboard.KEY_I, "Trains in Motion");
     /**the skin to use for the rail*/
     public static int railSkin = 2;
+
+    public static boolean disableCache = false;
 
     public static KeyBinding raildevtoolUp, raildevtoolDown,
             raildevtoolLeft, raildevtoolRight, raildevtoolRaise, raildevtoolLower;
@@ -161,6 +159,9 @@ public class ClientProxy extends CommonProxy {
         preRenderModels = config.getBoolean("preRenderModels","Quality (Client only)", false,
                 "Pre-renders transport entity and item models during loading screen and stores them on GPU, Requires a lot of VRAM but makes the game run smoother, Don't use if get the GL error 1285 (Out of memory)");
 
+        disableCache = config.getBoolean("disableGLCache","Quality (Client only)", false,
+                "forces the render to skip model caching, this will cause significant lag, but is good for debugging, or if you get the GL error 1285 (Out of memory)");
+
         ForceTextureBinding = config.getBoolean("ForceTextureBinding","Quality (Client only)", false,
                 "Forces textures to be bound, slows performance on some machines, speeds it up on others, and fixes a rare bug where the the texture does not get bound. So... This REALLY depends on your machine, see what works best for you.");
 
@@ -210,10 +211,6 @@ public class ClientProxy extends CommonProxy {
         //player scaler
         RenderingRegistry.registerEntityRenderingHandler(EntityPlayer.class, playerRender);
 
-        //oveides the server registration of the rail item, so the client can have a complex model.
-        //   server can't load the CustomItemModel class due to it's reliance on GL imports.
-        railItem = RegisterItem(new ItemRail(),TrainsInMotion.MODID,  "timrail", null, TrainsInMotion.creativeTab, null, ebf.tim.items.CustomItemModel.instance);
-        //Minecraft.getMinecraft().render
 
 
         //keybinds
@@ -289,7 +286,7 @@ public class ClientProxy extends CommonProxy {
                     p.activePath.add(new Vec6f(-0.5f,0f,0f,0,0));
                     p.activePath.add(new Vec6f(0.5f,0f,0f,0,0));
                     p.gauge=new int[]{375};
-                    ModelBallast.modelPotatoBallast(p,0.5f,-0.5f,
+                    ModelBallast.modelPotatoBallast(p,0.5f,-0.5f, 1f,
                             ItemStack.loadItemStackFromNBT(p_78443_2_.getTagCompound().getCompoundTag("ballast")));
                 }
             }

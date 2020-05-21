@@ -3,7 +3,6 @@ package ebf.tim.models.rails;
 import ebf.tim.blocks.rails.BlockRailCore;
 import ebf.tim.blocks.rails.RailShapeCore;
 import ebf.tim.utility.ClientProxy;
-import ebf.tim.utility.DebugUtil;
 import ebf.tim.utility.Vec5f;
 import ebf.tim.utility.Vec6f;
 import fexcraft.tmt.slim.Tessellator;
@@ -19,6 +18,7 @@ import javax.annotation.Nullable;
 import java.util.Map;
 
 import static ebf.tim.utility.RailUtility.radianF;
+import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
 
 public class Model1x1Rail {
 
@@ -69,7 +69,7 @@ public class Model1x1Rail {
 
 
     //todo use the return value to manage displaylists
-    public static void Model3DRail(World world, int xPos, int yPos, int zPos, RailShapeCore shape, @Nullable ItemStack ballast, @Nullable ItemStack ties, @Nullable ItemStack rail, @Nullable int[] colors){
+    public static void Model3DRail(World world, int xPos, int yPos, int zPos, RailShapeCore shape, float scale, @Nullable ItemStack ballast, @Nullable ItemStack ties, @Nullable ItemStack rail, @Nullable int[] colors){
         if(shape.gauge==null || shape.activePath ==null || rail==null){
             return;
         }
@@ -78,7 +78,6 @@ public class Model1x1Rail {
         float minWidth=0, maxWidth=0;
         if(shape.gauge.length>1) {
             for (float offset : shape.getGaugePositions()) {
-                DebugUtil.println(offset);
                 //might as well do this here since we gotta loop it anyway, and only need to do it for the first, not like it changes later.
                 if (offset < minWidth) {
                     minWidth = offset;
@@ -109,39 +108,45 @@ public class Model1x1Rail {
                 }
             }
         }
+        if(colors==null){return;}
         //DebugUtil.println(ClientProxy.railLoD);
         //renders the rails, also defines min and max width
+        GL11.glEnable(GL11.GL_NORMALIZE);
         GL11.glPushMatrix();
+        GL11.glDisable(GL_TEXTURE_2D);
         switch (ClientProxy.railSkin){
-            case 0:{ModelRail.modelPotatoRail(shape, colors); break;}
-            case 1:{ModelRail.modelExtrudedRail(shape, colors); break;}
+            case 0:{ModelRail.modelPotatoRail(shape, scale, colors); break;}
+            case 1:{ModelRail.modelExtrudedRail(shape, scale, colors); break;}
             case 2://todo normal rail
-            case 3:{ModelRail.model3DRail(shape, colors); break;}//todo HD rail
+            case 3:{ModelRail.model3DRail(shape, scale, colors); break;}//todo HD rail
         }
+        GL11.glEnable(GL_TEXTURE_2D);
+        GL11.glColor4f(1.0f,1.0f,1.0f, 1.0f);
         GL11.glPopMatrix();
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
-        GL11.glColor4f(1.0f,1.0f,1.0f,1.0f);
+
         Tessellator.bindTexture(TextureMap.locationBlocksTexture);
-        // clear the display buffer to the clear colour
-        //GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
+
         if(ballast!=null && ballast.getItem()!=null) {
+            GL11.glPushMatrix();
             if(ClientProxy.railSkin==0){
-                ModelBallast.modelPotatoBallast(shape, maxWidth, minWidth, ballast);
+                ModelBallast.modelPotatoBallast(shape,  maxWidth, minWidth, scale, ballast);
             } else {
-                ModelBallast.model3DBallast(shape, maxWidth, minWidth, ballast);
+                ModelBallast.model3DBallast(shape,  maxWidth, minWidth, scale, ballast);
             }
+            GL11.glPopMatrix();
         }
 
         if(ties!=null && ties.getItem()!=null) {
+            GL11.glPushMatrix();
             if(ClientProxy.railSkin==0){
-                ModelTies.modelPotatoTies(BlockRailCore.getShape(world,xPos,yPos,zPos), maxWidth, minWidth, ties);
+                ModelTies.modelPotatoTies(BlockRailCore.getShape(world,xPos,yPos,zPos),  maxWidth, minWidth, scale, ties);
             } else if (ClientProxy.railSkin<3){
-                ModelTies.model3DTies(BlockRailCore.getShape(world,xPos,yPos,zPos), maxWidth, minWidth, ties);
+                ModelTies.model3DTies(BlockRailCore.getShape(world,xPos,yPos,zPos),  maxWidth, minWidth, scale, ties);
             } else {
                 //todo: HD ties
-                ModelTies.model3DTies(BlockRailCore.getShape(world,xPos,yPos,zPos), maxWidth, minWidth, ties);
+                ModelTies.model3DTies(BlockRailCore.getShape(world,xPos,yPos,zPos), maxWidth, minWidth, scale, ties);
             }
-
+            GL11.glPopMatrix();
         }
 
         GL11.glEnable(GL11.GL_LIGHTING);

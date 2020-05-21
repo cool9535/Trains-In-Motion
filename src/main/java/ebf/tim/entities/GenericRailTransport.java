@@ -1,6 +1,5 @@
 package ebf.tim.entities;
 
-import cofh.api.energy.IEnergyContainerItem;
 import com.mojang.authlib.GameProfile;
 import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
 import cpw.mods.fml.relauncher.Side;
@@ -32,7 +31,6 @@ import net.minecraft.init.Items;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
-import net.minecraft.item.ItemBucket;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntityFurnace;
@@ -44,7 +42,10 @@ import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.*;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static ebf.tim.TrainsInMotion.transportTypes.*;
 import static ebf.tim.utility.RailUtility.rotatePointF;
@@ -225,9 +226,17 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
 
     public ItemStackSlot fuelSlot(){
         return new ItemStackSlot(this, 400,114,32);
+
     }
     public ItemStackSlot waterSlot(){
-        return new ItemStackSlot(this, 401,150,32);
+        return new ItemStackSlot(this, 401,150,32).setOverlay(Items.water_bucket);
+    }
+
+    public ItemStackSlot tankerInputSlot(){
+        return new ItemStackSlot(this, 401,150,-8).setOverlay(Items.water_bucket);
+    }
+    public ItemStackSlot tankerOutputSlot(){
+        return new ItemStackSlot(this, 401,150,32).setOverlay(Items.bucket);
     }
 
     /**
@@ -603,7 +612,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
             for (int i=0;i<getSizeInventory();i++) {
                 invTag = tag.getCompoundTag("transportinv."+i);
                 if (invTag!=null) {
-                    inventory.get(i).setSlotContents(ItemStack.loadItemStackFromNBT(invTag));
+                    inventory.get(i).setSlotContents(ItemStack.loadItemStackFromNBT(invTag),inventory);
                 }
             }
         }
@@ -906,7 +915,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
                 }
                 if (e instanceof EntityItem) {
                     if (getTypes().contains(TrainsInMotion.transportTypes.HOPPER) && this.posY > this.posY + 0.5f &&
-                            isItemValidForSlot(0, ((EntityItem) e).getEntityItem())) {
+                            ((EntityItem) e).getEntityItem()!=null && isItemValidForSlot(0, ((EntityItem) e).getEntityItem())) {
                         addItem(((EntityItem) e).getEntityItem());
                         worldObj.removeEntity(e);
                     }
@@ -1005,7 +1014,6 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
 
     //used for trains and B-units
     public float getPower(){return 0;}
-    public float getMaxPower(){return 0;}
 
 
     /**
@@ -1247,7 +1255,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
     @Override
     public void setInventorySlotContents(int slot, ItemStack itemStack) {
         if (inventory != null && slot >=0 && slot <= getSizeInventory()) {
-            inventory.get(slot).setSlotContents(itemStack);
+            inventory.get(slot).setSlotContents(itemStack,inventory);
         }
     }
 
@@ -1304,13 +1312,11 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
                 if (slot == 36) {
                     return TileEntityFurnace.getItemBurnTime(itemStack) > 0;
                 } else if (slot ==37) {
-                    return itemStack.getItem() instanceof ItemBucket || FuelHandler.isUseableFluid(itemStack, this) != null;
+                    return FuelHandler.getUseableFluid(itemStack, this) != null;
                 }
             }
             if (type==ELECTRIC && slot==36){
-                return itemStack.getItem() == Items.redstone ||
-                        itemStack.getItem() == Item.getItemFromBlock(Blocks.redstone_block) ||
-                        itemStack.getItem() instanceof IEnergyContainerItem;
+                return FuelHandler.getUseableFluid(itemStack, this) != null;
             }
         }
         return true;
@@ -1324,7 +1330,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
      */
     public void addItem(ItemStack item){
         for(ItemStackSlot slot : inventory){
-            item = slot.mergeStack(this, inventory,item);
+            item = slot.mergeStack(item,inventory);
             if (item == null){
                 return;
             }
@@ -1392,7 +1398,7 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
             for (ItemStackSlot slot : inventory) {
                 if (slot.getStack() != null) {
                     this.entityDropItem(slot.getStack(), 1);
-                    slot.setSlotContents(null);
+                    slot.setSlotContents(null,null);
                 }
             }
         }
@@ -1536,6 +1542,45 @@ public class GenericRailTransport extends EntityMinecart implements IEntityAddit
         }
         return leftoverDrain;
     }
+
+    /**
+     * forced fill method, attempts to fill containers with the entire amount.
+     * this is mainly used by the fuel handler as a shorthand but can be manually referenced by other things
+     * @param from the direction to fill from, normally doesn't make a difference, can be null
+     * @param resource the fluid to fill with
+     * @return true if the tank was able to fill with the entire stack, false if not.
+     */
+    public boolean fill(@Nullable ForgeDirection from, FluidStack resource){
+        if(getTankCapacity()==null || resource==null ||resource.amount<1){return false;}
+        for(int stack =0; stack<getTankCapacity().length;stack++) {
+            if(getTankFilters()!=null && getTankFilters()[stack]!=null) {
+                boolean check=false;
+                for (String filter : getTankFilters()[stack]) {
+                    if (filter.length()==0 || RailUtility.stringContains(filter,resource.getFluid().getName())){
+                        check=false;
+                        break;
+                    } else {
+                        check=true;
+                    }
+                }
+                if(check){
+                    continue;
+                }
+            }
+            if (getTankInfo(null)[stack]!=null && (
+                    resource.getFluid() == null || getTankInfo(null)[stack].fluid.getFluid() == resource.getFluid() ||
+                            getTankInfo(null)[stack].fluid.amount ==0)) {
+                if(resource.amount+getTankInfo(null)[stack].fluid.amount<=getTankInfo(null)[stack].capacity){
+                    getTankInfo(null)[stack] = new FluidTankInfo(
+                            new FluidStack(resource.fluid, getTankInfo(null)[stack].fluid.amount+resource.amount),
+                            getTankInfo(null)[stack].capacity);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /**returns the list of fluid tanks and their capacity.*/
     @Override
     public FluidTankInfo[] getTankInfo(ForgeDirection from){

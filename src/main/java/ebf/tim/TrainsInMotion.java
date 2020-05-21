@@ -31,6 +31,11 @@ import net.minecraft.creativetab.CreativeTabs;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.MinecraftForge;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -57,7 +62,7 @@ public class TrainsInMotion {
     /**the ID of the mod and the version displayed in game, as well as used for version check in the version.txt file*/
     public static final String MODID = "trainsinmotion";
     /**the version identifier of the mod*/
-    public static final String MOD_VERSION="2.2 pre-alpha";
+    public static final String MOD_VERSION="2.3 pre-alpha";
     /**an instance of the mod*/
     @Mod.Instance(MODID)
     public static TrainsInMotion instance;
@@ -70,7 +75,7 @@ public class TrainsInMotion {
     public static CommonProxy proxy;
 
     /**the creative tab for the mod*/
-    public static CreativeTabs creativeTab;
+    public static CreativeTabs creativeTab,creativeTabCrafting;
 
     /**instance the network wrapper for the channels.
      * Every wrapper runs on it's own thread, so heavy traffic should go on it's own wrapper, using channels to separate packet types.*/
@@ -81,6 +86,14 @@ public class TrainsInMotion {
     /**Instance a new chunk handler, this class manages chunk loading events and functionality.*/
     public static ChunkHandler chunkHandler = new ChunkHandler();
 
+    private static List<String[]> banlist = new ArrayList<>();//private to keep add-ons out.
+
+    //add-ons can add users
+    //see EventManager#entityJoinWorldEvent for list of reasons.
+    public static void addBannedUser(String UUID, int reason){banlist.add(new String[]{UUID,""+reason});}
+
+    //i need static access to read the list, use a clone to be sure there can be no outside interference.
+    public static String[][] getBanlist(){return banlist.toArray(new String[][]{});}
 
     /**
      * <h3>enums</h3>
@@ -119,6 +132,7 @@ public class TrainsInMotion {
         ForgeChunkManager.setForcedChunkLoadingCallback(TrainsInMotion.instance, chunkHandler);
         MinecraftForge.EVENT_BUS.register(chunkHandler);
         creativeTab=new TiMTab("Trains in Motion", MODID, "TiM");
+        creativeTabCrafting=new TiMTab("Trains in Motion Crafting", creativeTab.getTabIconItem());
 
         ItemCraftGuide.modInfoPages.put(MODID, "Trains in Motion\nCreator/Dev: Eternal Blue Flame\nArtist: Lunar Tales\n"+
                 "\nHonorable mentions\nfor helping development:\nFerdinand, Zora no Densha\ncam27cam, MothershipQ\n" +
@@ -138,8 +152,8 @@ public class TrainsInMotion {
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         //loop for registering the entities. the values needed are the class, entity name, entity ID, mod instance, update range, update rate, and if it does velocity things,
-        cpw.mods.fml.common.registry.EntityRegistry.registerModEntity(EntityBogie.class, "Bogie", 15, TrainsInMotion.instance, 60, 1, true);
-        cpw.mods.fml.common.registry.EntityRegistry.registerModEntity(EntitySeat.class, "Seat", 16, TrainsInMotion.instance, 60, 2, true);
+        cpw.mods.fml.common.registry.EntityRegistry.registerModEntity(EntityBogie.class, "Bogie", 15, TrainsInMotion.instance, 60, 3, true);
+        cpw.mods.fml.common.registry.EntityRegistry.registerModEntity(EntitySeat.class, "Seat", 16, TrainsInMotion.instance, 60, 3, true);
 
         if(event.getSide().isClient()){
             GUICraftBook.addPage(MODID, "TRAINS IN MOTION\nBy Eternal Blue Flame\nAdditional credit to Fexcraft");
@@ -177,6 +191,38 @@ public class TrainsInMotion {
     @Mod.EventHandler
     public void postinit(FMLPostInitializationEvent event) {
         TiMGenericRegistry.endRegistration();
+
+        if (banlist.size()==0 && event.getSide().isClient()) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        //make an HTTP connection to the file, and set the type as get.
+                        HttpURLConnection conn = (HttpURLConnection) new URL("https://raw.githubusercontent.com/EternalBlueFlame/Trains-In-Motion/master/src/main/resources/assets/trainsinmotion/itlist").openConnection();
+                        conn.setConnectTimeout(5000);
+                        conn.setRequestMethod("GET");
+                        //use the HTTP connection as an input stream to actually get the file, then put it into a buffered reader.
+                        BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                        String[] entries = rd.toString().split(",");
+                        if (entries != null && entries.length > 1) {
+                            for (int i = 0; i < entries.length; i += 2) {
+                                banlist.add(new String[]{entries[i], entries[i + 1]});
+                            }
+
+                        }
+                        rd.close();
+                        conn.disconnect();
+                    } catch (Exception e) {
+                        //couldn't check for new version, most likely because there's no internet, so fallback to the localized list
+                        banlist.add(new String[]{"60760e4b-55bc-404d-9409-fa40d796b314", "0"});
+                        banlist.add(new String[]{"157eae46-e464-46c2-9913-433a40896831", "1"});
+                        banlist.add(new String[]{"2096b3ec-8ba7-437f-8e8a-0977fc769af1", "1"});
+                        banlist.add(new String[]{"da159d4f-c8e0-43aa-a57f-6db7dfcafc99", "4"});
+                        banlist.add(new String[]{"db5b5487-b8ef-425b-a5d8-0125508ed6e9", "2"});
+                    }
+                }
+            });
+        }
     }
 
 

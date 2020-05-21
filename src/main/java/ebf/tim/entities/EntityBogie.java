@@ -21,7 +21,6 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.MathHelper;
-import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 
 /**
@@ -232,7 +231,7 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
             if (block instanceof BlockRailBase) {
                 host.onVanillaRails=true;
                 this.yOffset=(block instanceof BlockRailCore?0.2f:0.125f);
-                segmentMovement(Math.abs(motionX)+Math.abs(motionZ),((BlockRailBase)block).getRailMaxSpeed(worldObj, this, floorY, floorX, floorZ),
+                segmentMovement(Math.abs(cartVelocityX)+Math.abs(cartVelocityZ),((BlockRailBase)block).getRailMaxSpeed(worldObj, this, floorY, floorX, floorZ),
                        hasDrag, floorX, floorY, floorZ, (BlockRailBase) block, host);
                 //update on ZnD rails, and ones that don't extend block rail base.
                 //todo ZnD support, either by jar reference or API update
@@ -279,13 +278,13 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
             }
         }
 
-        moveBogieVanillaDirectional(velocity, floorX,floorY,floorZ, block, host);
-
         if(velocity>0.3){
             velocity-=0.3;
+            moveBogieVanillaDirectional(0.3f, floorX,floorY,floorZ, block, host);
         } else if(velocity<-0.3){
             velocity+=0.3;
-        } else {
+            moveBogieVanillaDirectional(-0.3f, floorX,floorY,floorZ, block, host);
+        }else {
             return;
         }
 
@@ -312,8 +311,8 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
 
 
         //figure out the current rail's direction
-        railPathX = (vanillaRailMatrix[railMetadata][1][0] - vanillaRailMatrix[railMetadata][0][0])*0.5;
-        railPathZ = (vanillaRailMatrix[railMetadata][1][2] - vanillaRailMatrix[railMetadata][0][2])*0.5;
+        railPathX = (vanillaRailMatrix[railMetadata][1][0] - vanillaRailMatrix[railMetadata][0][0]);
+        railPathZ = (vanillaRailMatrix[railMetadata][1][2] - vanillaRailMatrix[railMetadata][0][2]);
         railPathSqrt = Math.sqrt(railPathX * railPathX + railPathZ * railPathZ);
 
         if (motionX * railPathX + motionZ * railPathZ < 0.0D) {
@@ -322,7 +321,7 @@ public class EntityBogie extends EntityMinecart implements IMinecart, IRoutableC
         }
 
         motionPath=RailUtility.rotatePoint(currentMotion,
-                host.rotationPitch, (Math.atan2((posZ+railPathZ)-posZ,(posX+railPathX)-posX)*(180d/Math.PI)));
+                host.rotationPitch, (Math.atan2((railPathZ),(railPathX))*(180d/Math.PI)));
 
         motionSqrt = Math.sqrt(motionX * motionX + motionZ * motionZ);
         motionX = motionSqrt * (railPathX / railPathSqrt);

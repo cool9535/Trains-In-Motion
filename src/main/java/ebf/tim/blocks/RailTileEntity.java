@@ -1,11 +1,9 @@
 package ebf.tim.blocks;
 
 import ebf.XmlBuilder;
+import ebf.tim.blocks.rails.BlockRailCore;
 import ebf.tim.blocks.rails.RailShapeCore;
-import ebf.tim.blocks.rails.RailSimpleShape;
 import ebf.tim.models.rails.Model1x1Rail;
-import ebf.tim.utility.DebugUtil;
-import ebf.tim.utility.Vec5f;
 import fexcraft.tmt.slim.TextureManager;
 import net.minecraft.block.Block;
 import net.minecraft.crash.CrashReportCategory;
@@ -18,8 +16,6 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.World;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.Map;
 
 
 public class RailTileEntity extends TileEntity {
@@ -29,18 +25,23 @@ public class RailTileEntity extends TileEntity {
     //todo public int snow=0;
     //todo public int timer=0;
     //todo public int overgrowth=0;
-    private Integer railGLID=null;
+    public Integer railGLID=null;
+    private int meta=0;
     public XmlBuilder data = new XmlBuilder();
     public boolean updateModel=false;
-    @Deprecated
-    //todo seperate this into individual rail/ties/ballast, it will take more ram and triple GPU use, but its necessary to fix various texture issues.
-    Map<String, Integer> CachedRailModels = new HashMap<String, Integer>();
-
     //used for the actual path, and rendered
     //public RailShapeCore points = new RailShapeCore();
     //TODO: only rendered, to show other paths, maybe rework so they are all in the same list and just have a bool for which is active?
     //public List<RailPointData> cosmeticPoints = new ArrayList<>();
 
+
+    public int getMeta() {
+        return meta;
+    }
+    public void setMeta(int i){
+        meta=i;
+        markDirty();
+    }
 
     public void func_145828_a(@Nullable CrashReportCategory report)  {
         if (report == null) {
@@ -52,26 +53,22 @@ public class RailTileEntity extends TileEntity {
                 org.lwjgl.opengl.GL11.glCallList(railGLID);
             }
 
-            if(updateModel){
+            if(railGLID==null || updateModel){
                 RailShapeCore route =new RailShapeCore().parseString(data.getString("route"));
-                if (route!=null) {
-                    if(CachedRailModels.containsKey(route.toString())){
-                        railGLID=CachedRailModels.get(route.toString());
-                        updateModel = false;
-                    } else {
+                if (route!=null && route.gauge!=null) {
+                    if(railGLID==null) {
                         railGLID = net.minecraft.client.renderer.GLAllocation.generateDisplayLists(1);
-                        org.lwjgl.opengl.GL11.glNewList(railGLID, org.lwjgl.opengl.GL11.GL_COMPILE);
-
-                        Model1x1Rail.Model3DRail(worldObj, xCoord, yCoord, zCoord,
-                                route,
-                                data.getItemStack("ballast"),
-                                data.getItemStack("ties"),
-                                data.getItemStack("rail"), null);
-
-                        org.lwjgl.opengl.GL11.glEndList();
-                        updateModel = false;
-                        CachedRailModels.put(route.toString(),railGLID);
                     }
+                    org.lwjgl.opengl.GL11.glNewList(railGLID, org.lwjgl.opengl.GL11.GL_COMPILE);
+
+                    Model1x1Rail.Model3DRail(worldObj, xCoord, yCoord, zCoord,
+                            route,data.getfloat("scale"),
+                            data.getItemStack("ballast"),
+                            data.getItemStack("ties"),
+                            data.getItemStack("rail"), null);
+
+                    org.lwjgl.opengl.GL11.glEndList();
+                    updateModel = false;
                 }
             }
         } else {super.func_145828_a(report);}
@@ -92,7 +89,7 @@ public class RailTileEntity extends TileEntity {
     @Override
     public AxisAlignedBB getRenderBoundingBox() {
         if (boundingBox == null) {
-            boundingBox = AxisAlignedBB.getBoundingBox(xCoord, yCoord, zCoord, xCoord + 1, yCoord + 1, zCoord + 1);
+            boundingBox = AxisAlignedBB.getBoundingBox(xCoord, yCoord, zCoord, xCoord+1, yCoord, zCoord+1);
         }
         return boundingBox;
     }
@@ -137,6 +134,7 @@ public class RailTileEntity extends TileEntity {
     public void writeToNBT(NBTTagCompound tag){
         super.writeToNBT(tag);
         tag.setString("data", data.toXMLString());
+        tag.setInteger("meta", meta);
 
     }
 
@@ -146,7 +144,15 @@ public class RailTileEntity extends TileEntity {
         super.readFromNBT(tag);
         String s = tag.getString("data");
         data = new XmlBuilder(s);
+        if(tag.hasKey("meta")) {
+            meta = tag.getInteger("meta");
+        } else {
+            meta=worldObj.getBlockMetadata(xCoord,yCoord,zCoord);
+        }
 
+        if(!data.containsFloat("scale")){
+            data.putFloat("scale", ((BlockRailCore)worldObj.getBlock(xCoord,yCoord,zCoord)).renderScale);
+        }
     }
 
 }

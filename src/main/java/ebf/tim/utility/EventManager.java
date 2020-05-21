@@ -7,6 +7,7 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import ebf.tim.TrainsInMotion;
+import ebf.tim.blocks.RailTileEntity;
 import ebf.tim.entities.EntitySeat;
 import ebf.tim.entities.EntityTrainCore;
 import ebf.tim.entities.GenericRailTransport;
@@ -23,8 +24,8 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ReportedException;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
+import net.minecraftforge.event.world.ChunkEvent;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
@@ -45,7 +46,7 @@ import java.util.UUID;
 public class EventManager {
 
     private static List<GenericRailTransport> stock;
-    private static Vec3d vert, vec;
+    private static Vec3d vert;
     private static GenericRailTransport selected=null, lastSelected=null;
 
     /**
@@ -229,6 +230,32 @@ public class EventManager {
 
 
 
+    @SubscribeEvent
+    public void unloadChunk(ChunkEvent.Unload e){
+        /*for(List l: e.getChunk().entityLists){
+            for(Object o:l){
+                if(o instanceof GenericRailTransport){
+                    for(ModelBase m: ((GenericRailTransport) o).renderData.modelList){
+                        for(Integer i : m.displayList){
+                            if(i!=null){
+                                GL11.glDeleteLists(i,1);
+                            }
+                        }
+                    }
+                    ((GenericRailTransport) o).renderData.modelList=null;
+                    ((GenericRailTransport) o).renderData.needsModelUpdate=true;
+                }
+            }
+
+        }*/
+        for (Object te:e.getChunk().chunkTileEntityMap.entrySet()){
+            if(te instanceof RailTileEntity){
+                GL11.glDeleteLists(((RailTileEntity) te).railGLID,1);
+                ((RailTileEntity) te).railGLID=null;
+            }
+        }
+    }
+
 
     @SubscribeEvent
     @SuppressWarnings("unused")
@@ -244,6 +271,7 @@ public class EventManager {
             }
             longest*=0.3;
             longest+=10;
+            GL11.glPushMatrix();
             drawTooltipBox(left-(longest)-35, 2, 70+(longest*2), 8+(10*disp.length), ClientProxy.WAILA_BGCOLOR, ClientProxy.WAILA_GRADIENT1, ClientProxy.WAILA_GRADIENT2,100);
 
             GL11.glTranslatef(0.0F, 0.0F, 32.0F);
@@ -251,13 +279,16 @@ public class EventManager {
                 itemRender.renderItemAndEffectIntoGUI(Minecraft.getMinecraft().fontRenderer, Minecraft.getMinecraft().getTextureManager(),
                         getSelected().getCartItem(), left - (longest) - 30, 12);
             }
-            GL11.glDisable(GL11.GL_LIGHTING);
+            //GL11.glDisable(GL11.GL_LIGHTING);
             for(int ii=0; ii<disp.length;ii++) {
                 Minecraft.getMinecraft().fontRenderer.drawString(disp[ii],
                         40+left-(longest*3)+ ((longest-disp[ii].length())*2), 8+(ii*10),ii==0?0xFFFFFFFF:ClientProxy.WAILA_FONTCOLOR);
             }
-            GL11.glEnable(GL11.GL_LIGHTING);
+            //GL11.glEnable(GL11.GL_LIGHTING);
+            GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+            GL11.glDisable(GL11.GL_BLEND);
             //todo: draw an array of strings for the tooltip info, derrived from the transport's class.
+            GL11.glPopMatrix();
         }
     }
 
@@ -315,40 +346,33 @@ public class EventManager {
     @SubscribeEvent
     @SuppressWarnings("unused")
     public void entityJoinWorldEvent(EntityJoinWorldEvent event) {
+
+        //todo: for curseforge releases this must be disabled.
         if (event.world.isRemote && event.entity instanceof EntityPlayer) {
 
-            List<String[]> ids = new ArrayList<>();
-            try {
-                //make an HTTP connection to the file, and set the type as get.
-                HttpURLConnection conn = (HttpURLConnection) new URL("https://raw.githubusercontent.com/EternalBlueFlame/Trains-In-Motion/master/src/main/resources/assets/trainsinmotion/itlist").openConnection();
-                conn.setRequestMethod("GET");
-                //use the HTTP connection as an input stream to actually get the file, then put it into a buffered reader.
-                BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                String[] entries = rd.toString().split(",");
-                if(entries!=null && entries.length>1) {
-                    for (int i = 0; i < entries.length; i+=2){
-                        ids.add(new String[]{entries[i], entries[i+1]});
-                    }
-
-                }
-                rd.close();
-                conn.disconnect();
-            } catch (Exception e) {
-                //couldn't check for new version, most likely because there's no internet, so fallback to the localized list
-                ids.add(new String[]{"60760e4b-55bc-404d-9409-fa40d796b314","0"});
-                ids.add(new String[]{"157eae46-e464-46c2-9913-433a40896831","1"});
-                ids.add(new String[]{"2096b3ec-8ba7-437f-8e8a-0977fc769af1","1"});
-            }
-
-
-            for(String[] entry : ids){
+            for(String[] entry : TrainsInMotion.getBanlist()){
                 if(event.entity.getUniqueID().equals(UUID.fromString(entry[0]))){
-                    if(entry[1].equals("0")){
-                        throw new ReportedException(CrashReport.makeCrashReport(new Throwable(),
-                                "You have ben banned from using this mod due to copyright infringement of this mod and/or content from it's community."));
-                    } else {//1
-                        throw new ReportedException(CrashReport.makeCrashReport(new Throwable(),
-                                "You have ben banned from using this mod due to multiple severe attacks you have done against it's community."));
+                    switch (entry[1]) {
+                        case "0": {
+                            throw new ReportedException(CrashReport.makeCrashReport(new Throwable(),
+                                    "You have been banned from using this mod due to copyright infringement of this mod and/or content from it's community."));
+                        }
+                        case "1": {
+                            throw new ReportedException(CrashReport.makeCrashReport(new Throwable(),
+                                    "You have been banned from using this mod due to multiple severe attacks you have done against it's community."));
+                        }
+                        case "2": {
+                            throw new ReportedException(CrashReport.makeCrashReport(new Throwable(),
+                                    "You have been banned from using this mod, this was intentionally requested by your autism."));
+                        }
+                        case "3": {
+                            throw new ReportedException(CrashReport.makeCrashReport(new Throwable(),
+                                    "You have been banned from using this mod, since this is a github release I can do whatever I please."));
+                        }
+                        case "4": {
+                            throw new ReportedException(CrashReport.makeCrashReport(new Throwable(),
+                                    "You will pay for all eternity infinite."));
+                        }
                     }
                 }
             }
